@@ -1,0 +1,188 @@
+"""
+Templates Resource
+
+Handles template management operations including listing,
+creating, and deleting message templates.
+
+Ported from flowers-backend with TypeScript SDK alignment.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+from .base import BaseResource
+
+if TYPE_CHECKING:
+    from ..client import WhatsAppClient
+
+logger = logging.getLogger(__name__)
+
+
+class TemplatesResource(BaseResource):
+    """
+    WhatsApp templates operations.
+
+    Provides methods for managing message templates:
+    - List templates
+    - Create templates
+    - Delete templates
+    - Get template details
+
+    Note: Templates must be approved by WhatsApp before use.
+    Template creation and management can also be done through
+    the Kapso dashboard or Meta Business Manager.
+
+    Example:
+        >>> # List templates
+        >>> templates = await client.templates.list(business_account_id="123...")
+        >>> for t in templates["data"]:
+        ...     print(f"{t['name']}: {t['status']}")
+    """
+
+    def __init__(self, client: WhatsAppClient) -> None:
+        super().__init__(client)
+
+    async def list(
+        self,
+        *,
+        business_account_id: str,
+        limit: int = 100,
+        after: str | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        List message templates for business account.
+
+        Args:
+            business_account_id: WhatsApp Business Account ID
+            limit: Maximum number of templates to return
+            after: Cursor for pagination
+            status: Filter by status (APPROVED, PENDING, REJECTED)
+
+        Returns:
+            Paginated list of templates
+
+        Example:
+            >>> templates = await client.templates.list(
+            ...     business_account_id="123456789"
+            ... )
+            >>> for template in templates['data']:
+            ...     print(template['name'], template['status'])
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if after:
+            params["after"] = after
+        if status:
+            params["status"] = status
+
+        logger.info(f"Listing templates for business account {business_account_id}")
+        return await self._request(
+            "GET",
+            f"{business_account_id}/message_templates",
+            params=params,
+        )
+
+    async def get(self, *, template_id: str) -> dict[str, Any]:
+        """
+        Get details of a specific template.
+
+        Args:
+            template_id: Template ID
+
+        Returns:
+            Template details
+
+        Example:
+            >>> template = await client.templates.get(template_id="123456789")
+            >>> print(template['name'], template['status'], template['category'])
+        """
+        logger.info(f"Getting template details for {template_id}")
+        return await self._request("GET", template_id)
+
+    async def create(
+        self,
+        *,
+        business_account_id: str,
+        name: str,
+        language: str,
+        category: str,
+        components: list[dict[str, Any]],
+        parameter_format: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a new message template.
+
+        Args:
+            business_account_id: WhatsApp Business Account ID
+            name: Template name (lowercase, underscore separated)
+            language: Language code (e.g., 'en_US', 'es', 'pt_BR')
+            category: Template category (UTILITY, MARKETING, AUTHENTICATION)
+            components: Template components (HEADER, BODY, FOOTER, BUTTONS)
+            parameter_format: Parameter format (POSITIONAL or NAMED)
+
+        Returns:
+            Template creation result
+
+        Note:
+            Templates require WhatsApp approval before use.
+            Approval typically takes 1-2 hours but can take up to 24 hours.
+
+        Example:
+            >>> result = await client.templates.create(
+            ...     business_account_id="123456789",
+            ...     name="order_confirmation",
+            ...     category="UTILITY",
+            ...     language="es",
+            ...     components=[
+            ...         {
+            ...             "type": "BODY",
+            ...             "text": "Hola {{1}}, tu pedido {{2}} ha sido confirmado!",
+            ...             "example": {"body_text": [["Jessica", "ORDER123"]]}
+            ...         }
+            ...     ]
+            ... )
+        """
+        payload: dict[str, Any] = {
+            "name": name,
+            "category": category,
+            "language": language,
+            "components": components,
+        }
+
+        if parameter_format:
+            payload["parameter_format"] = parameter_format
+
+        logger.info(f"Creating template '{name}' for business account {business_account_id}")
+        return await self._request(
+            "POST",
+            f"{business_account_id}/message_templates",
+            json=payload,
+        )
+
+    async def delete(
+        self,
+        *,
+        business_account_id: str,
+        name: str,
+    ) -> dict[str, Any]:
+        """
+        Delete a message template.
+
+        Args:
+            business_account_id: WhatsApp Business Account ID
+            name: Template name to delete
+
+        Returns:
+            Deletion result
+
+        Note:
+            Deleted templates cannot be recovered.
+        """
+        logger.info(f"Deleting template '{name}' from business account {business_account_id}")
+        return await self._request(
+            "DELETE",
+            f"{business_account_id}/message_templates",
+            params={"name": name},
+        )
