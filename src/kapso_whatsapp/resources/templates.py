@@ -189,24 +189,55 @@ class TemplatesResource(BaseResource):
         self,
         *,
         business_account_id: str,
-        name: str,
+        name: str | None = None,
+        hsm_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Delete a message template.
 
+        Specify either `name` or `hsm_id` to identify the template to delete.
+
         Args:
             business_account_id: WhatsApp Business Account ID
-            name: Template name to delete
+            name: Template name to delete (use this OR hsm_id)
+            hsm_id: Template ID to delete (use this OR name)
 
         Returns:
-            Deletion result
+            Deletion result with success status
 
         Note:
             Deleted templates cannot be recovered.
+
+        Raises:
+            ValueError: If neither name nor hsm_id is provided, or if both are provided
+
+        Example:
+            >>> # Delete by name
+            >>> await client.templates.delete(
+            ...     business_account_id="123456789",
+            ...     name="order_confirmation"
+            ... )
+            >>> # Delete by ID
+            >>> await client.templates.delete(
+            ...     business_account_id="123456789",
+            ...     hsm_id="template-id-here"
+            ... )
         """
-        logger.info(f"Deleting template '{name}' from business account {business_account_id}")
+        if not name and not hsm_id:
+            raise ValueError("Must specify either 'name' or 'hsm_id'")
+        if name and hsm_id:
+            raise ValueError("Specify only one of 'name' or 'hsm_id', not both")
+
+        params: dict[str, Any] = {}
+        if name:
+            params["name"] = name
+        if hsm_id:
+            params["hsm_id"] = hsm_id
+
+        identifier = name or hsm_id
+        logger.info(f"Deleting template '{identifier}' from business account {business_account_id}")
         return await self._request(
             "DELETE",
             f"{business_account_id}/message_templates",
-            params={"name": name},
+            params=params,
         )
