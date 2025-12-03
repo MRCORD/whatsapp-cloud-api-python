@@ -33,7 +33,7 @@ class TestClientInitialization:
         """Should use default configuration values."""
         client = WhatsAppClient(access_token=access_token)
         assert client.config.base_url == "https://graph.facebook.com"
-        assert client.config.graph_version == "v23.0"
+        assert client.config.graph_version == "v24.0"
         assert client.config.timeout == 30.0
         assert client.config.max_retries == 3
 

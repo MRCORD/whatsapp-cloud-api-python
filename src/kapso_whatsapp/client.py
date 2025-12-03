@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 DEFAULT_BASE_URL = "https://graph.facebook.com"
-DEFAULT_GRAPH_VERSION = "v23.0"
+DEFAULT_GRAPH_VERSION = "v24.0"
 
 
 def _to_snake_case(name: str) -> str:
