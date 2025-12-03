@@ -117,6 +117,7 @@ class MediaInput(BaseModel):
     link: str | None = Field(default=None, description="Public URL to media")
     caption: str | None = Field(default=None, max_length=1024, description="Media caption")
     filename: str | None = Field(default=None, description="Filename for documents")
+    voice: bool | None = Field(default=None, description="Set to true for audio to play as voice note")
 
     @field_validator("link", mode="after")
     @classmethod
@@ -196,6 +197,12 @@ class ReactionMessageInput(BaseModel):
     phone_number_id: str
     to: str
     reaction: ReactionInput
+
+
+class ReplyContext(BaseModel):
+    """Context for replying to a specific message."""
+
+    message_id: str = Field(..., description="ID of the message to reply to")
 
 
 # =============================================================================
