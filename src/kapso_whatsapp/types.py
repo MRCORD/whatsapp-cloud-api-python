@@ -813,19 +813,36 @@ class PaginatedResponse(BaseModel, Generic[T]):
     paging: Paging = Field(default_factory=Paging)
 
 
-class Conversation(BaseModel):
-    """Kapso conversation."""
+class ConversationKapso(BaseModel):
+    """Kapso-specific conversation metadata extension."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str
-    phone_number_id: str = Field(..., alias="phoneNumberId")
-    wa_id: str = Field(..., alias="waId")
-    status: Literal["active", "ended", "expired"] = "active"
-    created_at: datetime | None = Field(default=None, alias="createdAt")
-    updated_at: datetime | None = Field(default=None, alias="updatedAt")
-    last_message_at: datetime | None = Field(default=None, alias="lastMessageAt")
-    contact: dict[str, Any] | None = None
+    contact_name: str | None = Field(default=None, alias="contactName", description="Contact display name")
+    messages_count: int | None = Field(default=None, alias="messagesCount", description="Total message count")
+    last_message_id: str | None = Field(default=None, alias="lastMessageId", description="WhatsApp message ID of last message")
+    last_message_type: str | None = Field(default=None, alias="lastMessageType", description="Type of last message")
+    last_message_timestamp: datetime | None = Field(default=None, alias="lastMessageTimestamp", description="Timestamp of last message")
+    last_message_text: str | None = Field(default=None, alias="lastMessageText", description="Text content of last message")
+    last_inbound_at: datetime | None = Field(default=None, alias="lastInboundAt", description="Timestamp of last inbound message")
+    last_outbound_at: datetime | None = Field(default=None, alias="lastOutboundAt", description="Timestamp of last outbound message")
+
+
+class Conversation(BaseModel):
+    """WhatsApp conversation with Kapso extensions."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str = Field(..., description="Conversation ID (UUID)")
+    phone_number: str = Field(..., alias="phoneNumber", description="Contact's phone number (normalized)")
+    status: Literal["active", "ended"] = Field(default="active", description="Conversation status")
+    last_active_at: datetime | None = Field(default=None, alias="lastActiveAt", description="Last activity timestamp")
+    created_at: datetime | None = Field(default=None, alias="createdAt", description="Creation timestamp")
+    updated_at: datetime | None = Field(default=None, alias="updatedAt", description="Last update timestamp")
+    whatsapp_config_id: str | None = Field(default=None, alias="whatsappConfigId", description="WhatsApp configuration ID (UUID)")
+    metadata: dict[str, Any] | None = Field(default=None, description="Custom metadata")
+    phone_number_id: str = Field(..., alias="phoneNumberId", description="WhatsApp Business Phone Number ID")
+    kapso: ConversationKapso | None = Field(default=None, description="Kapso-specific conversation metadata")
 
 
 class KapsoContact(BaseModel):

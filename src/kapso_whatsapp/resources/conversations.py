@@ -7,6 +7,7 @@ Handles conversation management operations.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 from .base import BaseResource
@@ -34,35 +35,74 @@ class ConversationsResource(BaseResource):
         self,
         *,
         phone_number_id: str,
-        status: Literal["active", "ended", "expired"] | None = None,
-        limit: int = 50,
+        status: Literal["active", "ended"] | None = None,
+        last_active_since: datetime | str | None = None,
+        last_active_until: datetime | str | None = None,
+        phone_number: str | None = None,
+        limit: int = 20,
+        before: str | None = None,
         after: str | None = None,
+        fields: str | None = None,
     ) -> dict[str, Any]:
         """
         List conversations.
 
+        Conversations are ordered by last activity (most recent first).
+        Supports filtering by status, activity time range, and phone number.
+
         Args:
             phone_number_id: WhatsApp Business phone number ID
-            status: Filter by status
-            limit: Maximum conversations to return
-            after: Pagination cursor
+            status: Filter by conversation status ('active' or 'ended')
+            last_active_since: Filter conversations active on or after this time (ISO 8601)
+            last_active_until: Filter conversations active on or before this time (ISO 8601)
+            phone_number: Filter by contact phone number
+            limit: Maximum results per page (default 20, max 100)
+            before: Cursor for previous page (Base64 encoded)
+            after: Cursor for next page (Base64 encoded)
+            fields: Filter response fields. Use 'kapso()' to include Kapso extensions.
 
         Returns:
-            Paginated list of conversations
+            Paginated list of conversations with Kapso metadata
+
+        Example:
+            >>> # List active conversations
+            >>> await client.conversations.list(
+            ...     phone_number_id="123456",
+            ...     status="active"
+            ... )
+            >>> # List with time filter and Kapso extensions
+            >>> await client.conversations.list(
+            ...     phone_number_id="123456",
+            ...     last_active_since="2024-01-01T00:00:00Z",
+            ...     fields="kapso()"
+            ... )
         """
         self._require_kapso_proxy()
 
-        params: dict[str, Any] = {
-            "phone_number_id": phone_number_id,
-            "limit": limit,
-        }
+        params: dict[str, Any] = {"limit": limit}
 
         if status:
             params["status"] = status
+        if last_active_since:
+            if isinstance(last_active_since, datetime):
+                params["last_active_since"] = last_active_since.isoformat()
+            else:
+                params["last_active_since"] = last_active_since
+        if last_active_until:
+            if isinstance(last_active_until, datetime):
+                params["last_active_until"] = last_active_until.isoformat()
+            else:
+                params["last_active_until"] = last_active_until
+        if phone_number:
+            params["phone_number"] = phone_number
+        if before:
+            params["before"] = before
         if after:
             params["after"] = after
+        if fields:
+            params["fields"] = fields
 
-        return await self._request("GET", "conversations", params=params)
+        return await self._request("GET", f"{phone_number_id}/conversations", params=params)
 
     async def get(
         self,

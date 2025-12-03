@@ -57,6 +57,7 @@ from .types import (
     ContactsMessageInput,
     ContactUrl,
     Conversation,
+    ConversationKapso,
     CtaUrlParameters,
     DocumentMessageInput,
     FlowActionPayload,
@@ -215,6 +216,7 @@ __all__ = [
     "Paging",
     "PaginatedResponse",
     "Conversation",
+    "ConversationKapso",
     "KapsoContact",
     "Call",
     # List Messages API types
