@@ -171,9 +171,18 @@ class RateLimitError(WhatsAppAPIError):
         message: str = "Rate limit exceeded",
         *,
         retry_after: int | None = None,
-        **kwargs: Any,
+        status_code: int | None = None,
+        error_code: str | int | None = None,
+        error_subcode: int | None = None,
+        response: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__(message, **kwargs)
+        super().__init__(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
         self.retry_after = retry_after
 
     @property
@@ -198,9 +207,18 @@ class ValidationError(WhatsAppAPIError):
         message: str = "Validation failed",
         *,
         field: str | None = None,
-        **kwargs: Any,
+        status_code: int | None = None,
+        error_code: str | int | None = None,
+        error_subcode: int | None = None,
+        response: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__(message, **kwargs)
+        super().__init__(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
         self.field = field
 
     @property
@@ -344,27 +362,62 @@ def categorize_error(
         error_code = error_data.get("code")
         error_subcode = error_data.get("error_subcode")
 
-    kwargs = {
-        "status_code": status_code,
-        "error_code": error_code,
-        "error_subcode": error_subcode,
-        "response": response,
-    }
-
     # Check for 24-hour window error
     if status_code == 422 and "24-hour" in message.lower():
-        return MessageWindowError(message, **kwargs)
+        return MessageWindowError(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
 
     # Map status codes to exceptions
     if status_code == 401:
-        return AuthenticationError(message, **kwargs)
+        return AuthenticationError(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
     if status_code == 403:
-        return AuthorizationError(message, **kwargs)
+        return AuthorizationError(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
     if status_code == 404:
-        return NotFoundError(message, **kwargs)
+        return NotFoundError(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
     if status_code == 429:
-        return RateLimitError(message, **kwargs)
+        return RateLimitError(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
     if status_code == 400 or status_code == 422:
-        return ValidationError(message, **kwargs)
+        return ValidationError(
+            message,
+            status_code=status_code,
+            error_code=error_code,
+            error_subcode=error_subcode,
+            response=response,
+        )
 
-    return WhatsAppAPIError(message, **kwargs)
+    return WhatsAppAPIError(
+        message,
+        status_code=status_code,
+        error_code=error_code,
+        error_subcode=error_subcode,
+        response=response,
+    )

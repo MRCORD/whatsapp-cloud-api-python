@@ -335,7 +335,7 @@ class WhatsAppClient:
 
                 # Parse response
                 try:
-                    response_data = response.json()
+                    response_data: dict[str, Any] = response.json()
                 except Exception:
                     response_data = {"text": response.text}
 

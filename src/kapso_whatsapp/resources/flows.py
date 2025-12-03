@@ -7,6 +7,7 @@ deployment, and preview operations.
 
 from __future__ import annotations
 
+import builtins
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -74,7 +75,7 @@ class FlowsResource(BaseResource):
         *,
         waba_id: str,
         name: str,
-        categories: list[str] | None = None,
+        categories: builtins.list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Create a new flow.

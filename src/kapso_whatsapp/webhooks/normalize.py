@@ -243,7 +243,7 @@ def normalize_webhook(payload: Any) -> NormalizedWebhookResult:
 
 def _normalize_message(message: dict[str, Any]) -> dict[str, Any]:
     """Normalize a single message with Kapso extensions."""
-    normalized = _to_camel_case_deep(message)
+    normalized: dict[str, Any] = _to_camel_case_deep(message)
 
     # Initialize kapso extensions
     kapso: dict[str, Any] = normalized.get("kapso", {})

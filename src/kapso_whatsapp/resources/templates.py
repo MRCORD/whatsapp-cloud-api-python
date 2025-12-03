@@ -9,6 +9,7 @@ Ported from flowers-backend with TypeScript SDK alignment.
 
 from __future__ import annotations
 
+import builtins
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -132,7 +133,7 @@ class TemplatesResource(BaseResource):
         name: str,
         language: str,
         category: str,
-        components: list[dict[str, Any]],
+        components: builtins.list[dict[str, Any]],
         parameter_format: str | None = None,
     ) -> dict[str, Any]:
         """

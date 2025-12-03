@@ -323,7 +323,8 @@ async def _decrypt_flow_payload(
     plaintext = _decrypt_buffer(cipher_with_tag, meta)
 
     try:
-        return json.loads(plaintext.decode("utf-8"))
+        result: dict[str, Any] = json.loads(plaintext.decode("utf-8"))
+        return result
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         raise FlowServerError(400, f"Unable to parse decrypted payload: {e}") from e
 

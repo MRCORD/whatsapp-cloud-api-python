@@ -121,7 +121,7 @@ class MediaInput(BaseModel):
 
     @field_validator("link", mode="after")
     @classmethod
-    def validate_has_source(cls, v: str | None, info) -> str | None:
+    def validate_has_source(cls, v: str | None, info: Any) -> str | None:
         if v is None and info.data.get("id") is None:
             raise ValueError("Either 'id' or 'link' must be provided")
         return v
