@@ -34,35 +34,64 @@ class ContactsResource(BaseResource):
         self,
         *,
         phone_number_id: str,
+        wa_id: str | None = None,
         customer_id: str | None = None,
-        limit: int = 50,
+        has_customer: bool | None = None,
+        limit: int = 20,
+        before: str | None = None,
         after: str | None = None,
+        fields: str | None = None,
     ) -> dict[str, Any]:
         """
         List contacts.
 
+        Contacts are returned in a paginated format with cursor-based navigation.
+
         Args:
             phone_number_id: WhatsApp Business phone number ID
-            customer_id: Filter by customer ID
-            limit: Maximum contacts to return
-            after: Pagination cursor
+            wa_id: Filter by WhatsApp ID (phone number)
+            customer_id: Filter by associated customer ID
+            has_customer: Filter by customer association (true/false)
+            limit: Maximum results per page (default 20, max 100)
+            before: Cursor for previous page (Base64 encoded)
+            after: Cursor for next page (Base64 encoded)
+            fields: Filter response fields. Use 'kapso()' to include Kapso extensions.
 
         Returns:
             Paginated list of contacts
+
+        Example:
+            >>> # List all contacts
+            >>> await client.contacts.list(phone_number_id="123456")
+            >>> # Filter by WhatsApp ID
+            >>> await client.contacts.list(
+            ...     phone_number_id="123456",
+            ...     wa_id="15551234567"
+            ... )
+            >>> # Filter contacts with customer association
+            >>> await client.contacts.list(
+            ...     phone_number_id="123456",
+            ...     has_customer=True
+            ... )
         """
         self._require_kapso_proxy()
 
-        params: dict[str, Any] = {
-            "phone_number_id": phone_number_id,
-            "limit": limit,
-        }
+        params: dict[str, Any] = {"limit": limit}
 
+        if wa_id:
+            params["wa_id"] = wa_id
         if customer_id:
             params["customer_id"] = customer_id
+        if has_customer is not None:
+            params["has_customer"] = has_customer
+        if before:
+            params["before"] = before
         if after:
             params["after"] = after
+        if fields:
+            params["fields"] = fields
 
-        return await self._request("GET", "contacts", params=params)
+        return await self._request("GET", f"{phone_number_id}/contacts", params=params)
 
     async def get(
         self,
