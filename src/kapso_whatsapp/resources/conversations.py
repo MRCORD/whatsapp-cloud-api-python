@@ -107,20 +107,45 @@ class ConversationsResource(BaseResource):
     async def get(
         self,
         *,
+        phone_number_id: str,
         conversation_id: str,
+        fields: str | None = None,
     ) -> dict[str, Any]:
         """
         Get conversation details.
 
         Args:
-            conversation_id: Conversation ID
+            phone_number_id: WhatsApp Business phone number ID
+            conversation_id: Conversation ID (UUID)
+            fields: Filter response fields. Use 'kapso()' to include Kapso extensions.
 
         Returns:
-            Conversation details
+            Conversation details with optional Kapso metadata
+
+        Example:
+            >>> # Get basic conversation details
+            >>> await client.conversations.get(
+            ...     phone_number_id="123456",
+            ...     conversation_id="conv-uuid-here"
+            ... )
+            >>> # Get with Kapso extensions
+            >>> await client.conversations.get(
+            ...     phone_number_id="123456",
+            ...     conversation_id="conv-uuid-here",
+            ...     fields="kapso()"
+            ... )
         """
         self._require_kapso_proxy()
 
-        return await self._request("GET", f"conversations/{conversation_id}")
+        params: dict[str, Any] = {}
+        if fields:
+            params["fields"] = fields
+
+        return await self._request(
+            "GET",
+            f"{phone_number_id}/conversations/{conversation_id}",
+            params=params if params else None,
+        )
 
     async def update_status(
         self,
