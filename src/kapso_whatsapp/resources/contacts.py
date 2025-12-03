@@ -98,6 +98,7 @@ class ContactsResource(BaseResource):
         *,
         phone_number_id: str,
         wa_id: str,
+        fields: str | None = None,
     ) -> dict[str, Any]:
         """
         Get contact details.
@@ -105,16 +106,34 @@ class ContactsResource(BaseResource):
         Args:
             phone_number_id: WhatsApp Business phone number ID
             wa_id: WhatsApp ID of the contact
+            fields: Filter response fields. Use 'kapso()' to include Kapso extensions.
 
         Returns:
-            Contact details
+            Contact details with optional Kapso metadata
+
+        Example:
+            >>> # Get basic contact details
+            >>> await client.contacts.get(
+            ...     phone_number_id="123456",
+            ...     wa_id="15551234567"
+            ... )
+            >>> # Get with Kapso extensions
+            >>> await client.contacts.get(
+            ...     phone_number_id="123456",
+            ...     wa_id="15551234567",
+            ...     fields="kapso()"
+            ... )
         """
         self._require_kapso_proxy()
 
+        params: dict[str, Any] = {}
+        if fields:
+            params["fields"] = fields
+
         return await self._request(
             "GET",
-            f"contacts/{wa_id}",
-            params={"phone_number_id": phone_number_id},
+            f"{phone_number_id}/contacts/{wa_id}",
+            params=params if params else None,
         )
 
     async def update(
