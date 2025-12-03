@@ -48,34 +48,58 @@ class TemplatesResource(BaseResource):
         self,
         *,
         business_account_id: str,
-        limit: int = 100,
-        after: str | None = None,
+        name: str | None = None,
         status: str | None = None,
+        category: str | None = None,
+        language: str | None = None,
+        limit: int = 20,
+        before: str | None = None,
+        after: str | None = None,
     ) -> dict[str, Any]:
         """
         List message templates for business account.
 
         Args:
             business_account_id: WhatsApp Business Account ID
-            limit: Maximum number of templates to return
-            after: Cursor for pagination
+            name: Filter by template name
             status: Filter by status (APPROVED, PENDING, REJECTED)
+            category: Filter by category (AUTHENTICATION, MARKETING, UTILITY)
+            language: Filter by language code (e.g., 'en_US', 'es', 'pt_BR')
+            limit: Maximum results per page (default 20, max 100)
+            before: Cursor for previous page (Base64 encoded)
+            after: Cursor for next page (Base64 encoded)
 
         Returns:
             Paginated list of templates
 
         Example:
+            >>> # List all templates
             >>> templates = await client.templates.list(
             ...     business_account_id="123456789"
             ... )
             >>> for template in templates['data']:
             ...     print(template['name'], template['status'])
+            >>> # Filter by status and category
+            >>> templates = await client.templates.list(
+            ...     business_account_id="123456789",
+            ...     status="APPROVED",
+            ...     category="MARKETING"
+            ... )
         """
         params: dict[str, Any] = {"limit": limit}
-        if after:
-            params["after"] = after
+
+        if name:
+            params["name"] = name
         if status:
             params["status"] = status
+        if category:
+            params["category"] = category
+        if language:
+            params["language"] = language
+        if before:
+            params["before"] = before
+        if after:
+            params["after"] = after
 
         logger.info(f"Listing templates for business account {business_account_id}")
         return await self._request(
