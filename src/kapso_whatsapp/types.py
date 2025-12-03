@@ -78,9 +78,19 @@ class MessageDirection(str, Enum):
 class MessageStatus(str, Enum):
     """Message delivery status."""
 
+    PENDING = "pending"
     SENT = "sent"
     DELIVERED = "delivered"
     READ = "read"
+    FAILED = "failed"
+
+
+class ProcessingStatus(str, Enum):
+    """Kapso message processing status."""
+
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
     FAILED = "failed"
 
 
@@ -636,23 +646,132 @@ class WebhookEvents(BaseModel):
 # =============================================================================
 
 
+class MediaData(BaseModel):
+    """Media file information from Kapso."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    url: str | None = None
+    filename: str | None = None
+    content_type: str | None = Field(default=None, alias="contentType")
+    byte_size: int | None = Field(default=None, alias="byteSize")
+
+
 class KapsoMessageFields(BaseModel):
     """Kapso extension fields for messages."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     direction: MessageDirection | None = None
-    status: str | None = None
-    processing_status: str | None = Field(default=None, alias="processingStatus")
+    status: MessageStatus | None = None
+    processing_status: ProcessingStatus | None = Field(default=None, alias="processingStatus")
     phone_number: str | None = Field(default=None, alias="phoneNumber")
     has_media: bool | None = Field(default=None, alias="hasMedia")
     media_url: str | None = Field(default=None, alias="mediaUrl")
-    media_data: dict[str, Any] | None = Field(default=None, alias="mediaData")
+    media_data: MediaData | None = Field(default=None, alias="mediaData")
     contact_name: str | None = Field(default=None, alias="contactName")
     whatsapp_conversation_id: str | None = Field(default=None, alias="whatsappConversationId")
     flow_response: dict[str, Any] | None = Field(default=None, alias="flowResponse")
     flow_token: str | None = Field(default=None, alias="flowToken")
     flow_name: str | None = Field(default=None, alias="flowName")
-    content: dict[str, Any] | None = None
+    content: str | None = None
     order_text: str | None = Field(default=None, alias="orderText")
+    message_type_data: dict[str, Any] | None = Field(default=None, alias="messageTypeData")
+
+
+class MessageContext(BaseModel):
+    """Reply context for a message."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: str | None = Field(default=None, alias="from")
+    id: str | None = None
+    referred_product: dict[str, Any] | None = Field(default=None, alias="referredProduct")
+
+
+class InteractiveResponseButton(BaseModel):
+    """Button reply in interactive response."""
+
+    id: str
+    title: str
+
+
+class InteractiveResponseList(BaseModel):
+    """List reply in interactive response."""
+
+    id: str
+    title: str
+    description: str | None = None
+
+
+class InteractiveResponseNfm(BaseModel):
+    """Native Flow Message reply."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str | None = None
+    response_json: str | None = Field(default=None, alias="responseJson")
+    body: str | None = None
+
+
+class InteractiveResponse(BaseModel):
+    """Interactive message response (for inbound interactive replies)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: Literal["button_reply", "list_reply", "nfm_reply"] | None = None
+    button_reply: InteractiveResponseButton | None = Field(default=None, alias="buttonReply")
+    list_reply: InteractiveResponseList | None = Field(default=None, alias="listReply")
+    nfm_reply: InteractiveResponseNfm | None = Field(default=None, alias="nfmReply")
+
+
+class OrderMessageResponse(BaseModel):
+    """Order message content."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    catalog_id: str | None = Field(default=None, alias="catalogId")
+    product_items: list[dict[str, Any]] | None = Field(default=None, alias="productItems")
+    order_text: str | None = Field(default=None, alias="orderText")
+
+
+class WhatsAppMessageResponse(BaseModel):
+    """
+    WhatsApp message from List Messages API.
+
+    Represents both inbound and outbound messages with all type-specific
+    content and Kapso extensions.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    timestamp: str
+    type: MessageType
+
+    # Direction-specific fields
+    from_: str | None = Field(default=None, alias="from")
+    to: str | None = None
+
+    # Reply context
+    context: MessageContext | None = None
+
+    # Type-specific content (only one will be present based on type)
+    text: WebhookMessageText | None = None
+    image: WebhookMessageMedia | None = None
+    video: WebhookMessageMedia | None = None
+    audio: WebhookMessageMedia | None = None
+    document: WebhookMessageMedia | None = None
+    sticker: WebhookMessageMedia | None = None
+    location: WebhookMessageLocation | None = None
+    contacts: list[Contact] | None = None
+    order: OrderMessageResponse | None = None
+    interactive: InteractiveResponse | None = None
+    template: dict[str, Any] | None = None
+    reaction: ReactionInput | None = None
+
+    # Kapso extensions
+    kapso: KapsoMessageFields | None = None
 
 
 class PagingCursors(BaseModel):
@@ -668,6 +787,13 @@ class Paging(BaseModel):
     cursors: PagingCursors = Field(default_factory=PagingCursors)
     next: str | None = None
     previous: str | None = None
+
+
+class ListMessagesResponse(BaseModel):
+    """Response from List Messages API."""
+
+    data: list[WhatsAppMessageResponse]
+    paging: Paging = Field(default_factory=Paging)
 
 
 T = TypeVar("T")

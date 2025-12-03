@@ -14,8 +14,11 @@ from typing import TYPE_CHECKING, Any
 
 from ..types import (
     Contact,
+    ListMessagesResponse,
     LocationInput,
     MediaInput,
+    MessageDirection,
+    MessageStatus,
     SendMessageResponse,
     TemplateSendPayload,
     TextMessageInput,
@@ -762,31 +765,109 @@ class MessagesResource(BaseResource):
     # Kapso Proxy: Message History
     # =========================================================================
 
+    async def list(
+        self,
+        *,
+        phone_number_id: str,
+        conversation_id: str | None = None,
+        direction: MessageDirection | str | None = None,
+        status: MessageStatus | str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        limit: int = 20,
+        before: str | None = None,
+        after: str | None = None,
+        fields: str | None = None,
+    ) -> ListMessagesResponse:
+        """
+        List messages for a phone number (Kapso proxy only).
+
+        Retrieve a paginated list of WhatsApp messages with filtering support.
+        Uses cursor-based pagination for efficient scrolling through large result sets.
+
+        Args:
+            phone_number_id: WhatsApp Business phone number ID
+            conversation_id: Filter by conversation ID
+            direction: Filter by direction (inbound/outbound)
+            status: Filter by message status (pending/sent/delivered/read/failed)
+            since: Filter messages created on or after this time (ISO 8601)
+            until: Filter messages created on or before this time (ISO 8601)
+            limit: Maximum number of results per page (default 20, max 100)
+            before: Cursor for previous page (Base64 encoded)
+            after: Cursor for next page (Base64 encoded)
+            fields: Filter response fields. Use `kapso()` to include Kapso-specific
+                   extensions. Example: `fields=kapso(direction,status,processing_status)`
+
+        Returns:
+            ListMessagesResponse with messages and pagination info
+
+        Example:
+            >>> messages = await client.messages.list(
+            ...     phone_number_id="123456",
+            ...     direction="inbound",
+            ...     status="delivered",
+            ...     limit=50
+            ... )
+            >>> for msg in messages.data:
+            ...     print(f"{msg.id}: {msg.type} - {msg.kapso.status}")
+        """
+        self._require_kapso_proxy()
+
+        params: dict[str, Any] = {"limit": min(limit, 100)}
+
+        if conversation_id:
+            params["conversation_id"] = conversation_id
+        if direction:
+            params["direction"] = direction.value if isinstance(direction, MessageDirection) else direction
+        if status:
+            params["status"] = status.value if isinstance(status, MessageStatus) else status
+        if since:
+            params["since"] = since
+        if until:
+            params["until"] = until
+        if before:
+            params["before"] = before
+        if after:
+            params["after"] = after
+        if fields:
+            params["fields"] = fields
+
+        response = await self._request("GET", f"{phone_number_id}/messages", params=params)
+        return ListMessagesResponse.model_validate(response)
+
     async def query(
         self,
         *,
         phone_number_id: str,
-        direction: str | None = None,
+        conversation_id: str | None = None,
+        direction: MessageDirection | str | None = None,
+        status: MessageStatus | str | None = None,
         since: str | None = None,
         until: str | None = None,
-        limit: int = 50,
+        limit: int = 20,
+        before: str | None = None,
         after: str | None = None,
         fields: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> ListMessagesResponse:
         """
         Query message history (Kapso proxy only).
 
+        Alias for `list()` method for backward compatibility.
+
         Args:
             phone_number_id: WhatsApp Business phone number ID
+            conversation_id: Filter by conversation ID
             direction: Filter by direction (inbound/outbound)
+            status: Filter by message status (pending/sent/delivered/read/failed)
             since: ISO timestamp for start date
             until: ISO timestamp for end date
-            limit: Maximum messages to return
-            after: Pagination cursor
+            limit: Maximum messages to return (default 20, max 100)
+            before: Cursor for previous page
+            after: Cursor for next page
             fields: Kapso fields to include (e.g., "kapso(media_url)")
 
         Returns:
-            Paginated message list
+            ListMessagesResponse with messages and pagination info
 
         Example:
             >>> messages = await client.messages.query(
@@ -795,58 +876,57 @@ class MessagesResource(BaseResource):
             ...     limit=50
             ... )
         """
-        self._require_kapso_proxy()
-
-        params: dict[str, Any] = {
-            "phone_number_id": phone_number_id,
-            "limit": limit,
-        }
-
-        if direction:
-            params["direction"] = direction
-        if since:
-            params["since"] = since
-        if until:
-            params["until"] = until
-        if after:
-            params["after"] = after
-        if fields:
-            params["fields"] = fields
-
-        return await self._request("GET", "messages", params=params)
+        return await self.list(
+            phone_number_id=phone_number_id,
+            conversation_id=conversation_id,
+            direction=direction,
+            status=status,
+            since=since,
+            until=until,
+            limit=limit,
+            before=before,
+            after=after,
+            fields=fields,
+        )
 
     async def list_by_conversation(
         self,
         *,
         phone_number_id: str,
         conversation_id: str,
-        limit: int = 50,
+        limit: int = 20,
+        before: str | None = None,
         after: str | None = None,
         fields: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> ListMessagesResponse:
         """
         List messages in a conversation (Kapso proxy only).
 
+        Convenience method that filters by conversation_id.
+
         Args:
             phone_number_id: WhatsApp Business phone number ID
-            conversation_id: Conversation ID
-            limit: Maximum messages to return
-            after: Pagination cursor
+            conversation_id: Conversation ID to filter messages
+            limit: Maximum messages to return (default 20, max 100)
+            before: Cursor for previous page
+            after: Cursor for next page
             fields: Kapso fields to include
 
         Returns:
-            Paginated message list
+            ListMessagesResponse with messages and pagination info
+
+        Example:
+            >>> messages = await client.messages.list_by_conversation(
+            ...     phone_number_id="123456",
+            ...     conversation_id="conv-uuid-here",
+            ...     limit=20
+            ... )
         """
-        self._require_kapso_proxy()
-
-        params: dict[str, Any] = {
-            "phone_number_id": phone_number_id,
-            "limit": limit,
-        }
-
-        if after:
-            params["after"] = after
-        if fields:
-            params["fields"] = fields
-
-        return await self._request("GET", f"conversations/{conversation_id}/messages", params=params)
+        return await self.list(
+            phone_number_id=phone_number_id,
+            conversation_id=conversation_id,
+            limit=limit,
+            before=before,
+            after=after,
+            fields=fields,
+        )
