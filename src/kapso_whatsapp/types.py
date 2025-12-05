@@ -467,6 +467,8 @@ class TemplateMessageInput(BaseModel):
 class MessageContact(BaseModel):
     """Contact info in message response."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     input: str
     wa_id: str = Field(..., alias="waId")
 

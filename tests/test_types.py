@@ -230,3 +230,16 @@ class TestSendMessageResponse:
         data = {"messaging_product": "whatsapp", "contacts": [], "messages": []}
         response = SendMessageResponse.model_validate(data)
         assert response.message_id is None
+
+    def test_parse_snake_case_response(self) -> None:
+        """Should parse API response with snake_case fields (actual Kapso API format)."""
+        data = {
+            "messaging_product": "whatsapp",
+            "contacts": [{"input": "+51949767204", "wa_id": "51949767204"}],  # snake_case
+            "messages": [{"id": "wamid.xxx"}],
+        }
+        response = SendMessageResponse.model_validate(data)
+        assert response.messaging_product == "whatsapp"
+        assert response.contacts[0].wa_id == "51949767204"
+        assert response.contacts[0].input == "+51949767204"
+        assert response.message_id == "wamid.xxx"
