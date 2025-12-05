@@ -213,6 +213,8 @@ class ReplyContext(BaseModel):
 class ContactPhone(BaseModel):
     """Contact phone number."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     phone: str
     type: Literal["CELL", "MAIN", "IPHONE", "HOME", "WORK"] = "CELL"
     wa_id: str | None = Field(default=None, alias="waId")
@@ -228,6 +230,8 @@ class ContactEmail(BaseModel):
 class ContactName(BaseModel):
     """Contact name details."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     formatted_name: str = Field(..., alias="formattedName")
     first_name: str | None = Field(default=None, alias="firstName")
     last_name: str | None = Field(default=None, alias="lastName")
@@ -238,6 +242,8 @@ class ContactName(BaseModel):
 
 class ContactAddress(BaseModel):
     """Contact address."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     street: str | None = None
     city: str | None = None
@@ -310,6 +316,8 @@ class InteractiveHeader(BaseModel):
 class InteractiveButtonsInput(BaseModel):
     """Input for sending interactive button message."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     phone_number_id: str
     to: str
     body_text: str = Field(..., max_length=1024, alias="bodyText")
@@ -350,6 +358,8 @@ class InteractiveListInput(BaseModel):
 
 class CtaUrlParameters(BaseModel):
     """CTA URL button parameters."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     display_text: str = Field(..., max_length=35, alias="displayText")
     url: str
@@ -476,6 +486,8 @@ class MessageContact(BaseModel):
 class MessageInfo(BaseModel):
     """Message info in response."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     message_status: str | None = Field(default=None, alias="messageStatus")
 
@@ -522,11 +534,15 @@ class MediaMetadata(BaseModel):
 class WebhookMessageText(BaseModel):
     """Text content in webhook message."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     body: str
 
 
 class WebhookMessageMedia(BaseModel):
     """Media content in webhook message."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str
     mime_type: str | None = Field(default=None, alias="mimeType")
@@ -602,6 +618,8 @@ class WebhookMessage(BaseModel):
 class WebhookStatusConversation(BaseModel):
     """Conversation info in status webhook."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     origin: dict[str, str] | None = None
     expiration_timestamp: str | None = Field(default=None, alias="expirationTimestamp")
@@ -619,6 +637,8 @@ class WebhookStatusPricing(BaseModel):
 
 class WebhookStatusError(BaseModel):
     """Error in status webhook."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     code: int
     title: str
