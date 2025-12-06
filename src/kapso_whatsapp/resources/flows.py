@@ -246,7 +246,8 @@ class FlowsResource(BaseResource):
             try:
                 await self.publish(flow_id=flow_id)
                 result["published"] = True
-            except Exception as e:
+            except (ValueError, KeyError, TypeError) as e:
+                # Handle API errors during publishing
                 logger.warning(f"Failed to publish flow: {e}")
                 result["publish_error"] = str(e)
 
@@ -255,7 +256,8 @@ class FlowsResource(BaseResource):
             try:
                 preview_response = await self.get_preview(flow_id=flow_id)
                 result["preview_url"] = preview_response.get("preview_url")
-            except Exception as e:
+            except (ValueError, KeyError, TypeError) as e:
+                # Handle API errors during preview retrieval
                 logger.warning(f"Failed to get preview: {e}")
 
         return result

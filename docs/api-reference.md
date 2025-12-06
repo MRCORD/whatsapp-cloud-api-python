@@ -59,7 +59,7 @@ WhatsAppClient(
 Check if the client is configured to use the Kapso proxy.
 
 ```python
-client = WhatsAppClient(kapso_api_key="key", base_url="https://api.kapso.ai")
+client = WhatsAppClient(kapso_api_key="key", base_url="https://api.kapso.ai/meta/whatsapp")
 print(client.is_kapso_proxy())  # True
 ```
 

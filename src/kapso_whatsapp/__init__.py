@@ -20,7 +20,7 @@ Example:
     ...     )
 """
 
-from .client import WhatsAppClient
+from .client import DEFAULT_KAPSO_URL, WhatsAppClient
 from .exceptions import (
     AuthenticationError,
     ErrorCategory,
@@ -129,6 +129,7 @@ from .types import (
 __all__ = [
     # Client
     "WhatsAppClient",
+    "DEFAULT_KAPSO_URL",
     # Exceptions
     "WhatsAppAPIError",
     "AuthenticationError",

@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 DEFAULT_BASE_URL = "https://graph.facebook.com"
+DEFAULT_KAPSO_URL = "https://api.kapso.ai/meta/whatsapp"
 DEFAULT_GRAPH_VERSION = "v24.0"
 
 
@@ -336,7 +337,9 @@ class WhatsAppClient:
                 # Parse response
                 try:
                     response_data: dict[str, Any] = response.json()
-                except Exception:
+                except (ValueError, TypeError) as e:
+                    # Handle JSON parsing errors (httpx raises ValueError for invalid JSON)
+                    logger.debug(f"Failed to parse JSON response: {e}")
                     response_data = {"text": response.text}
 
                 # Success

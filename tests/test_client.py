@@ -24,7 +24,7 @@ class TestClientInitialization:
     def test_accepts_kapso_api_key(self, kapso_api_key: str) -> None:
         """Should accept kapso_api_key."""
         client = WhatsAppClient(
-            kapso_api_key=kapso_api_key, base_url="https://api.kapso.ai"
+            kapso_api_key=kapso_api_key, base_url="https://api.kapso.ai/meta/whatsapp"
         )
         assert client.config.kapso_api_key == kapso_api_key
         assert client.config.access_token is None
@@ -92,7 +92,7 @@ class TestKapsoProxyDetection:
         """Should detect Kapso proxy URL."""
         client = WhatsAppClient(
             kapso_api_key=kapso_api_key,
-            base_url="https://api.kapso.ai",
+            base_url="https://api.kapso.ai/meta/whatsapp",
         )
         assert client.is_kapso_proxy()
 

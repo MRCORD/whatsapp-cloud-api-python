@@ -128,14 +128,17 @@ class AuthenticationError(WhatsAppAPIError):
     """
 
     def __init__(self, message: str = "Authentication failed", **kwargs: Any) -> None:
+        """Initialize authentication error."""
         super().__init__(message, **kwargs)
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.AUTHENTICATION
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.DO_NOT_RETRY
 
 
@@ -147,14 +150,17 @@ class AuthorizationError(WhatsAppAPIError):
     """
 
     def __init__(self, message: str = "Authorization failed", **kwargs: Any) -> None:
+        """Initialize authorization error."""
         super().__init__(message, **kwargs)
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.AUTHORIZATION
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.DO_NOT_RETRY
 
 
@@ -176,6 +182,7 @@ class RateLimitError(WhatsAppAPIError):
         error_subcode: int | None = None,
         response: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize rate limit error with optional retry-after duration."""
         super().__init__(
             message,
             status_code=status_code,
@@ -187,10 +194,12 @@ class RateLimitError(WhatsAppAPIError):
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.RATE_LIMIT
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.RETRY_AFTER_DELAY
 
 
@@ -212,6 +221,7 @@ class ValidationError(WhatsAppAPIError):
         error_subcode: int | None = None,
         response: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize validation error with optional field information."""
         super().__init__(
             message,
             status_code=status_code,
@@ -223,10 +233,12 @@ class ValidationError(WhatsAppAPIError):
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.VALIDATION
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.DO_NOT_RETRY
 
 
@@ -238,14 +250,17 @@ class NotFoundError(WhatsAppAPIError):
     """
 
     def __init__(self, message: str = "Resource not found", **kwargs: Any) -> None:
+        """Initialize not found error."""
         super().__init__(message, **kwargs)
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.NOT_FOUND
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.DO_NOT_RETRY
 
 
@@ -257,14 +272,17 @@ class NetworkError(WhatsAppAPIError):
     """
 
     def __init__(self, message: str = "Network error", **kwargs: Any) -> None:
+        """Initialize network error."""
         super().__init__(message, **kwargs)
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.NETWORK
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.RETRY_WITH_BACKOFF
 
 
@@ -276,14 +294,17 @@ class TimeoutError(WhatsAppAPIError):
     """
 
     def __init__(self, message: str = "Request timeout", **kwargs: Any) -> None:
+        """Initialize timeout error."""
         super().__init__(message, **kwargs)
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.TIMEOUT
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.RETRY_WITH_BACKOFF
 
 
@@ -300,14 +321,17 @@ class KapsoProxyRequiredError(WhatsAppAPIError):
         message: str = "This operation requires Kapso proxy. Set base_url and kapso_api_key.",
         **kwargs: Any,
     ) -> None:
+        """Initialize Kapso proxy required error."""
         super().__init__(message, **kwargs)
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.VALIDATION
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.DO_NOT_RETRY
 
 
@@ -324,14 +348,17 @@ class MessageWindowError(WhatsAppAPIError):
         message: str = "Outside 24-hour messaging window. Use a template message.",
         **kwargs: Any,
     ) -> None:
+        """Initialize message window error."""
         super().__init__(message, **kwargs)
 
     @property
     def category(self) -> ErrorCategory:
+        """Error category classification."""
         return ErrorCategory.VALIDATION
 
     @property
     def retry_action(self) -> RetryAction:
+        """Recommended retry behavior for this error."""
         return RetryAction.DO_NOT_RETRY
 
 

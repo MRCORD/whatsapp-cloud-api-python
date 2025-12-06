@@ -56,7 +56,7 @@ async def kapso_client(kapso_api_key: str) -> WhatsAppClient:
     """Create a Kapso-configured client for testing."""
     return WhatsAppClient(
         kapso_api_key=kapso_api_key,
-        base_url="https://api.kapso.ai",
+        base_url="https://api.kapso.ai/meta/whatsapp",
     )
 
 

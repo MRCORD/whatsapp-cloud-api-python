@@ -68,7 +68,7 @@ from kapso_whatsapp import WhatsAppClient
 async def main():
     async with WhatsAppClient(
         kapso_api_key="your_kapso_key",
-        base_url="https://api.kapso.ai",
+        base_url="https://api.kapso.ai/meta/whatsapp",
     ) as client:
         # All standard API features work
         await client.messages.send_text(...)
@@ -93,7 +93,7 @@ def create_client() -> WhatsAppClient:
     if os.getenv("KAPSO_API_KEY"):
         return WhatsAppClient(
             kapso_api_key=os.environ["KAPSO_API_KEY"],
-            base_url=os.getenv("KAPSO_BASE_URL", "https://api.kapso.ai"),
+            base_url=os.getenv("KAPSO_BASE_URL", "https://api.kapso.ai/meta/whatsapp"),
         )
     else:
         return WhatsAppClient(
