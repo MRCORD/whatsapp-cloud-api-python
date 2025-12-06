@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2025-12-05
+
+### Fixed
+- **Kapso proxy URL** - Corrected base URL to `https://api.kapso.ai/meta/whatsapp` (was missing `/meta/whatsapp` path)
+- **Exception handling** - Replaced broad `except Exception` with specific exception types for better debugging:
+  - `client.py`: JSON parsing now catches `ValueError, TypeError` with explanatory logging
+  - `flows.py`: API errors in publish/preview now catch `ValueError, KeyError, TypeError`
+
+### Added
+- **DEFAULT_KAPSO_URL** constant - Exported for convenient client configuration
+- **Exception docstrings** - Added 27 comprehensive docstrings to exception class methods (`__init__`, `category`, `retry_action`) for improved IDE autocomplete and developer experience
+
+### Changed
+- All documentation examples updated with correct Kapso URL (README.md, docs/api-reference.md, docs/examples.md)
+- Test fixtures updated to use proper Kapso endpoint
+- Test badge updated to reflect 56 passing tests (was 55)
+
 ## [0.1.0] - 2025-12-02
 
 ### Added
@@ -100,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.1.3 | 2025-12-05 | Fixed Kapso URL, improved exception handling, added docstrings |
 | 0.1.0 | 2025-12-02 | Initial release with full API coverage |
 
 ## Upgrade Guide

@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://img.shields.io/pypi/v/kapso-whatsapp-cloud-api.svg)](https://pypi.org/project/kapso-whatsapp-cloud-api/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-55%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-56%20passed-brightgreen.svg)]()
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
 
@@ -75,7 +75,7 @@ from kapso_whatsapp import WhatsAppClient
 
 async with WhatsAppClient(
     kapso_api_key="your_kapso_key",
-    base_url="https://api.kapso.ai",
+    base_url="https://api.kapso.ai/meta/whatsapp",
 ) as client:
     # Access Kapso-specific features
     conversations = await client.conversations.list(
@@ -278,8 +278,8 @@ WhatsAppAPIError (base)
 client = WhatsAppClient(
     access_token="your_token",        # Meta access token
     # OR
-    kapso_api_key="your_key",         # Kapso API key
-    base_url="https://api.kapso.ai",  # Kapso proxy URL
+    kapso_api_key="your_key",                      # Kapso API key
+    base_url="https://api.kapso.ai/meta/whatsapp", # Kapso proxy URL
 
     # Optional configuration
     graph_version="v23.0",            # Graph API version
