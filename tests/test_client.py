@@ -22,12 +22,20 @@ class TestClientInitialization:
         assert client.config.kapso_api_key is None
 
     def test_accepts_kapso_api_key(self, kapso_api_key: str) -> None:
-        """Should accept kapso_api_key."""
-        client = WhatsAppClient(
-            kapso_api_key=kapso_api_key, base_url="https://api.kapso.ai/meta/whatsapp"
-        )
+        """Should accept kapso_api_key and auto-detect Kapso URL."""
+        client = WhatsAppClient(kapso_api_key=kapso_api_key)
         assert client.config.kapso_api_key == kapso_api_key
         assert client.config.access_token is None
+        # Should auto-detect Kapso URL
+        assert client.config.base_url == "https://api.kapso.ai/meta/whatsapp"
+
+    def test_kapso_api_key_with_custom_url(self, kapso_api_key: str) -> None:
+        """Should allow custom base_url override with kapso_api_key."""
+        client = WhatsAppClient(
+            kapso_api_key=kapso_api_key,
+            base_url="https://custom.kapso.proxy.com",
+        )
+        assert client.config.base_url == "https://custom.kapso.proxy.com"
 
     def test_default_config(self, access_token: str) -> None:
         """Should use default configuration values."""
@@ -89,11 +97,8 @@ class TestKapsoProxyDetection:
     """Test Kapso proxy detection."""
 
     def test_detects_kapso_proxy(self, kapso_api_key: str) -> None:
-        """Should detect Kapso proxy URL."""
-        client = WhatsAppClient(
-            kapso_api_key=kapso_api_key,
-            base_url="https://api.kapso.ai/meta/whatsapp",
-        )
+        """Should detect Kapso proxy URL (auto-detected from kapso_api_key)."""
+        client = WhatsAppClient(kapso_api_key=kapso_api_key)
         assert client.is_kapso_proxy()
 
     def test_detects_meta_graph(self, access_token: str) -> None:

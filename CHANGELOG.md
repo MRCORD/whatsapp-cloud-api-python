@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-01-24
+
+### Fixed
+- **Auto-detect Kapso base URL** - SDK now automatically uses `https://api.kapso.ai/meta/whatsapp` when `kapso_api_key` is provided without explicit `base_url`. Previously, users had to manually specify the base URL, causing 400 errors when forgotten.
+
+### Changed
+- Simplified client initialization for Kapso users: `WhatsAppClient(kapso_api_key="xxx")` now works without explicit `base_url`
+- Tests updated to verify auto-detection behavior (57 tests passing)
+
 ## [0.1.3] - 2025-12-05
 
 ### Fixed

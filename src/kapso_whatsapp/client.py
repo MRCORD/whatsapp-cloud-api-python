@@ -112,6 +112,10 @@ class WhatsAppClient:
         if not access_token and not kapso_api_key:
             raise ValueError("Must provide either access_token or kapso_api_key")
 
+        # Auto-detect base URL when using Kapso credentials
+        if kapso_api_key and base_url == DEFAULT_BASE_URL:
+            base_url = DEFAULT_KAPSO_URL
+
         self._config = ClientConfig(
             access_token=access_token,
             kapso_api_key=kapso_api_key,
