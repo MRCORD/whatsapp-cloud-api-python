@@ -9,6 +9,7 @@ import respx
 from httpx import Response
 
 from kapso_whatsapp import WhatsAppClient
+from kapso_whatsapp.platform import KapsoPlatformClient
 
 
 @pytest.fixture
@@ -64,6 +65,28 @@ async def kapso_client(kapso_api_key: str) -> WhatsAppClient:
 def mock_api() -> respx.MockRouter:
     """Create a respx mock router."""
     with respx.mock(assert_all_called=False) as router:
+        yield router
+
+
+@pytest.fixture
+def platform_api_key() -> str:
+    """Sample Kapso Platform API key for tests."""
+    return "test_platform_api_key_abcdef"
+
+
+@pytest.fixture
+async def platform_client(platform_api_key: str) -> KapsoPlatformClient:
+    """KapsoPlatformClient configured against the default base URL."""
+    return KapsoPlatformClient(api_key=platform_api_key, max_retries=0)
+
+
+@pytest.fixture
+def mock_platform_api() -> respx.MockRouter:
+    """respx router scoped to the Platform API base URL."""
+    with respx.mock(
+        assert_all_called=False,
+        base_url="https://api.kapso.ai/platform/v1",
+    ) as router:
         yield router
 
 

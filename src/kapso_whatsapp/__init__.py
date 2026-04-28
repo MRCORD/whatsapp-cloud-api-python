@@ -40,6 +40,7 @@ from .kapso import (
     build_kapso_fields,
     build_kapso_message_fields,
 )
+from .platform import DEFAULT_PLATFORM_URL, KapsoPlatformClient
 from .types import (
     # Message inputs
     AudioMessageInput,
@@ -127,9 +128,11 @@ from .types import (
 )
 
 __all__ = [
-    # Client
+    # Clients
     "WhatsAppClient",
     "DEFAULT_KAPSO_URL",
+    "KapsoPlatformClient",
+    "DEFAULT_PLATFORM_URL",
     # Exceptions
     "WhatsAppAPIError",
     "AuthenticationError",
@@ -231,4 +234,4 @@ __all__ = [
     "OrderMessageResponse",
 ]
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"

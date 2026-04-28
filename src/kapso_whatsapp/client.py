@@ -13,21 +13,12 @@ Provides:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import httpx
 
-from .exceptions import (
-    AuthenticationError,
-    NetworkError,
-    RateLimitError,
-    TimeoutError,
-    ValidationError,
-    WhatsAppAPIError,
-    categorize_error,
-)
+from ._http import _HttpCore
 from .types import ClientConfig
 
 if TYPE_CHECKING:
@@ -126,7 +117,18 @@ class WhatsAppClient:
             retry_backoff=retry_backoff,
         )
 
-        self._client: httpx.AsyncClient | None = None
+        auth_headers: dict[str, str] = {}
+        if self._config.access_token:
+            auth_headers["Authorization"] = f"Bearer {self._config.access_token}"
+        if self._config.kapso_api_key:
+            auth_headers["X-API-Key"] = self._config.kapso_api_key
+
+        self._http = _HttpCore(
+            timeout=self._config.timeout,
+            max_retries=self._config.max_retries,
+            retry_backoff=self._config.retry_backoff,
+            auth_headers=auth_headers,
+        )
         self._closed = False
 
         # Lazy-loaded resources
@@ -226,36 +228,11 @@ class WhatsAppClient:
     # HTTP Client Management
     # =========================================================================
 
-    async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client with connection pooling."""
-        if self._client is None or self._client.is_closed:
-            headers = {"User-Agent": "Kapso-Python-SDK/0.1.0"}
-
-            if self._config.access_token:
-                headers["Authorization"] = f"Bearer {self._config.access_token}"
-
-            if self._config.kapso_api_key:
-                headers["X-API-Key"] = self._config.kapso_api_key
-
-            self._client = httpx.AsyncClient(
-                timeout=httpx.Timeout(self._config.timeout),
-                headers=headers,
-                limits=httpx.Limits(
-                    max_connections=100,
-                    max_keepalive_connections=20,
-                    keepalive_expiry=30.0,
-                ),
-            )
-            logger.debug("Created new HTTP client with connection pooling")
-
-        return self._client
-
     async def close(self) -> None:
         """Close HTTP client and release resources."""
-        if self._client is not None and not self._client.is_closed:
-            await self._client.aclose()
-            self._closed = True
-            logger.debug("Closed WhatsAppClient session")
+        await self._http.close()
+        self._closed = True
+        logger.debug("Closed WhatsAppClient session")
 
     async def __aenter__(self) -> WhatsAppClient:
         """Context manager entry."""
@@ -286,125 +263,28 @@ class WhatsAppClient:
         headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """
-        Make HTTP request with retry logic.
+        Make HTTP request with retry logic against the Meta Graph (or Kapso
+        Meta-proxy) API.
 
-        Args:
-            method: HTTP method (GET, POST, DELETE, etc.)
-            path: API endpoint path
-            params: Query parameters
-            json: JSON body (auto-serialized)
-            data: Form data
-            files: Files to upload
-            headers: Additional headers
-
-        Returns:
-            Parsed JSON response
-
-        Raises:
-            WhatsAppAPIError: On API errors
-            AuthenticationError: On auth errors
-            RateLimitError: On rate limit errors
-            NetworkError: On network errors
-            TimeoutError: On timeout errors
+        Converts camelCase keys in params/json to snake_case before sending,
+        then delegates transport to the shared _HttpCore.
         """
-        client = await self._get_client()
         url = self._build_url(path)
 
-        # Convert params to snake_case for API
         if params:
             params = _to_snake_case_deep(params)
-
-        # Convert JSON body to snake_case for API
         if json:
             json = _to_snake_case_deep(json)
 
-        retry_count = 0
-        last_exception: WhatsAppAPIError | None = None
-
-        while retry_count <= self._config.max_retries:
-            try:
-                response = await client.request(
-                    method=method.upper(),
-                    url=url,
-                    params=params,
-                    json=json,
-                    data=data,
-                    files=files,
-                    headers=headers,
-                )
-
-                logger.debug(
-                    f"{method.upper()} {path} - Status: {response.status_code} - "
-                    f"Attempt: {retry_count + 1}"
-                )
-
-                # Parse response
-                try:
-                    response_data: dict[str, Any] = response.json()
-                except (ValueError, TypeError) as e:
-                    # Handle JSON parsing errors (httpx raises ValueError for invalid JSON)
-                    logger.debug(f"Failed to parse JSON response: {e}")
-                    response_data = {"text": response.text}
-
-                # Success
-                if response.status_code == 200:
-                    return response_data
-
-                # Handle errors
-                error = categorize_error(response.status_code, response_data)
-
-                # Handle rate limits with Retry-After header
-                if isinstance(error, RateLimitError):
-                    retry_after = response.headers.get("Retry-After")
-                    if retry_after:
-                        error.retry_after = int(retry_after)
-
-                # Non-retryable errors
-                if not error.is_retryable:
-                    raise error
-
-                last_exception = error
-
-            except httpx.ConnectError as e:
-                last_exception = NetworkError(f"Connection failed: {e}")
-                logger.warning(f"Network error on attempt {retry_count + 1}: {e}")
-
-            except httpx.TimeoutException as e:
-                last_exception = TimeoutError(f"Request timeout: {e}")
-                logger.warning(f"Timeout on attempt {retry_count + 1}")
-
-            except (AuthenticationError, ValidationError):
-                # Non-retryable errors - re-raise immediately
-                raise
-
-            # Check if we should retry
-            if (
-                last_exception
-                and last_exception.is_retryable
-                and retry_count < self._config.max_retries
-            ):
-                    retry_count += 1
-                    wait_time = self._config.retry_backoff * (2 ** (retry_count - 1))
-
-                    # Use Retry-After for rate limits
-                    if isinstance(last_exception, RateLimitError) and last_exception.retry_after:
-                        wait_time = last_exception.retry_after
-
-                    logger.info(
-                        f"Retrying in {wait_time:.1f}s "
-                        f"(attempt {retry_count}/{self._config.max_retries})"
-                    )
-                    await asyncio.sleep(wait_time)
-                    continue
-
-            break
-
-        # All retries exhausted
-        if last_exception:
-            logger.error(f"Request failed after {retry_count} retries: {last_exception}")
-            raise last_exception
-
-        raise WhatsAppAPIError("Request failed with unknown error")
+        return await self._http.request(
+            method,
+            url,
+            params=params,
+            json=json,
+            data=data,
+            files=files,
+            headers=headers,
+        )
 
     async def fetch(
         self,
@@ -418,17 +298,8 @@ class WhatsAppClient:
         Fetch from absolute URL with client auth headers.
 
         Useful for downloading media from WhatsApp CDN URLs.
-
-        Args:
-            url: Absolute URL to fetch
-            method: HTTP method
-            headers: Additional headers
-            **kwargs: Additional httpx request args
-
-        Returns:
-            Raw httpx Response
         """
-        client = await self._get_client()
+        client = await self._http.get_client()
         return await client.request(method, url, headers=headers, **kwargs)
 
     async def raw_fetch(

@@ -3,15 +3,21 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://img.shields.io/pypi/v/kapso-whatsapp-cloud-api.svg)](https://pypi.org/project/kapso-whatsapp-cloud-api/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-56%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-265%20passed-brightgreen.svg)]()
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
 
 A modern, async Python client for the WhatsApp Business Cloud API with Pydantic validation and Kapso proxy support.
 
+The package ships **two clients**:
+
+- `WhatsAppClient` — send/receive WhatsApp messages via Meta Graph or the Kapso Meta-proxy.
+- `KapsoPlatformClient` — manage your Kapso project itself: customers, setup links, broadcasts, webhooks, the Kapso-managed database, integrations, WhatsApp Flow lifecycle, and more.
+
 ## ✨ Features
 
 - **Full WhatsApp Cloud API Support**: Messages, templates, media, flows, and more
+- **Kapso Platform API**: 18 resources (customers, setup links, broadcasts, webhooks, database, integrations, WhatsApp Flows, …) covering the full Platform API surface
 - **Async/Await**: Built on httpx for efficient async HTTP operations
 - **Type Safety**: Pydantic v2 models for request/response validation
 - **Retry Logic**: Automatic retries with exponential backoff for transient errors
@@ -183,7 +189,7 @@ async def handle_flow_request(request):
 
 ## 📚 Resources
 
-The client provides access to various WhatsApp API resources:
+`WhatsAppClient` (messaging via Meta Graph or Kapso Meta-proxy):
 
 | Resource | Description |
 |----------|-------------|
@@ -195,6 +201,55 @@ The client provides access to various WhatsApp API resources:
 | `client.conversations` | List conversations (Kapso proxy only) |
 | `client.contacts` | Manage contacts (Kapso proxy only) |
 | `client.calls` | Call logs and operations (Kapso proxy only) |
+
+## 🛠 Kapso Platform API
+
+`KapsoPlatformClient` manages your Kapso project itself — separate from messaging:
+
+```python
+from kapso_whatsapp import KapsoPlatformClient
+
+async with KapsoPlatformClient(api_key="kp_live_…") as kp:
+    # Onboard a customer and generate a setup link
+    customer = await kp.customers.create(name="Acme Corp", external_customer_id="cus_42")
+    setup = await kp.setup_links.create(customer_id=customer.id)
+    print(setup.url)
+
+    # Iterate every broadcast across pages
+    async for broadcast in kp.broadcasts.iter():
+        print(broadcast.name)
+
+    # Query the Kapso-managed database
+    rows = await kp.database.query(table="leads", where={"status": "qualified"})
+```
+
+| Resource | Endpoints |
+|----------|-----------|
+| `kp.customers` | list / iter / get / create / update / delete |
+| `kp.setup_links` | list / create / update |
+| `kp.phone_numbers` | list / connect / get / update / delete / `check_health` |
+| `kp.display_names` | list / submit / retrieve |
+| `kp.users` | list project users |
+| `kp.broadcasts` | list / iter / get / create / recipients (list/iter/add) / send / schedule / cancel |
+| `kp.messages` | list / get |
+| `kp.conversations` | list / get / update_status / assignments (CRUD) |
+| `kp.contacts` | list / iter / get / create / update / erase |
+| `kp.media` | upload |
+| `kp.project_webhooks` | list / get / create / update / delete / test |
+| `kp.webhooks` | list / get / create / update / delete |
+| `kp.webhook_deliveries` | list / iter |
+| `kp.api_logs` | list / iter |
+| `kp.database` | query / get / insert / upsert / update / delete |
+| `kp.integrations` | CRUD + apps / actions / accounts / connect tokens / action schemas |
+| `kp.provider_models` | list |
+| `kp.whatsapp_flows` | flows + versions + data endpoint lifecycle + function logs/invocations |
+
+Configuration:
+
+- Base URL: `https://api.kapso.ai/platform/v1` (override via `base_url=` for staging).
+- Auth: `X-API-Key` header (project API key).
+- Pagination: `?page=N&per_page=N`. Every paginated `list(...)` has a matching `iter(...)` async generator that walks all pages.
+- Errors: same exception hierarchy as `WhatsAppClient` (`AuthenticationError`, `RateLimitError`, `NotFoundError`, etc.) — `retry_after` honored on 429.
 
 ## 🏗️ Architecture
 

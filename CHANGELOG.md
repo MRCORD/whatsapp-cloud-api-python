@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-04-27
+
+### Added
+- **`KapsoPlatformClient`** — new sibling client for the Kapso Platform API at `https://api.kapso.ai/platform/v1`. Manages your Kapso project itself (separate from messaging via `WhatsAppClient`).
+- **18 Platform resources, ~87 endpoints**:
+  - Onboarding: `customers`, `setup_links`, `phone_numbers`, `display_names`, `users`
+  - Messaging ops: `messages`, `conversations` (incl. assignments), `contacts`, `media`
+  - Broadcasts: `broadcasts` (incl. recipients/send/schedule/cancel), `provider_models`
+  - Webhooks & logs: `project_webhooks` (incl. test), `webhooks`, `webhook_deliveries`, `api_logs`
+  - Data & integrations: `database` (query/insert/upsert/update/delete/get), `integrations` (apps, actions, accounts, connect tokens, action schemas)
+  - WhatsApp Flows: `whatsapp_flows` (flows, versions, data endpoint lifecycle, function logs/invocations)
+- Every paginated `list(...)` has a matching `iter(...)` async generator that walks all pages automatically (page-based pagination via `meta.page` / `meta.total_pages`).
+- `KapsoPlatformClient.request_raw()` — full envelope (`data` + `meta`) for callers that need pagination metadata or rate-limit headers.
+- 208 new tests covering the Platform client and every resource (265 tests total).
+
+### Changed
+- Internal: extracted shared HTTP transport (httpx pool + retry/backoff + error categorization) into a private `_HttpCore` class. Both `WhatsAppClient` and `KapsoPlatformClient` delegate to it. `WhatsAppClient` public surface unchanged.
+- README: added Kapso Platform API section with the full resource table and quickstart.
+
+### Notes
+- The package is still distributed as `kapso_whatsapp`. With Platform support added, the name is slightly inaccurate — a rename to `kapso` is being considered for `1.0`. A deprecation shim will keep existing imports working.
+
 ## [0.1.4] - 2026-01-24
 
 ### Fixed
