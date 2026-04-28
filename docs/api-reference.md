@@ -20,6 +20,7 @@ The SDK ships **two clients**:
 - [Calls Resource](#calls-resource-kapso-only)
 - [Webhooks](#webhooks)
 - [Server-Side Flow Handling](#server-side-flow-handling)
+- [Template Builders](#template-builders)
 - [Types](#types)
 - [Exceptions](#exceptions)
 - **[Platform API → `platform-api.md`](./platform-api.md)** — `KapsoPlatformClient`, 18 resources, ~87 endpoints
@@ -626,6 +627,104 @@ Delete a template.
 
 ```python
 async def delete(waba_id: str, name: str, *, hsm_id: str | None = None) -> dict
+```
+
+---
+
+## Template Builders
+
+Three top-level helpers for parity with the TS SDK (`@kapso/whatsapp-cloud-api`). All return Pydantic models or dicts that plug into the existing `messages.send_template` and `templates.create` paths. Validation happens at build time so errors surface before the HTTP call.
+
+### `build_template_payload()`
+
+Pass-through validator for raw Meta-style components. Equivalent to `TemplateSendPayload(...)` constructed directly, matched here for TS-SDK migrants.
+
+```python
+from kapso_whatsapp import build_template_payload
+
+template = build_template_payload(
+    name="order_confirmation",
+    language="en_US",  # or {"code": "en_US", "policy": "deterministic"}
+    components=[
+        {"type": "body", "parameters": [{"type": "text", "text": "Ada"}]},
+    ],
+)
+await client.messages.send_template(
+    phone_number_id="123",
+    to="+15551234567",
+    template=template,
+)
+```
+
+### `build_template_send_payload()` ← typed shortcut
+
+The ergonomic high-value helper. Pass `body`, `header`, and `buttons` as flat lists; the helper assembles the Meta `components` structure for you.
+
+```python
+from kapso_whatsapp import build_template_send_payload
+
+template = build_template_send_payload(
+    name="order_confirmation",
+    language="en_US",
+    body=[
+        {"type": "text", "text": "Ada", "parameter_name": "customer_name"},
+        {"type": "text", "text": "#1234", "parameter_name": "order_id"},
+    ],
+    buttons=[
+        {
+            "sub_type": "flow",
+            "index": 0,
+            "parameters": [
+                {"type": "action", "action": {"flow_token": "FT_123"}},
+            ],
+        },
+    ],
+)
+```
+
+Accepts `parameterName` (camelCase) as well — Pydantic field aliases handle the conversion. The transport layer normalizes keys to snake_case when sending.
+
+### `build_template_definition()`
+
+Used at template *creation* time (different from sending). Validates the components shape (every component needs a `type`; `BUTTONS` components need a `buttons` array) and returns a dict ready to splat into `templates.create`.
+
+```python
+from kapso_whatsapp import build_template_definition
+
+# Authentication template with TTL
+auth = build_template_definition(
+    name="auth_code",
+    language="en_US",
+    category="AUTHENTICATION",
+    message_send_ttl_seconds=60,
+    components=[
+        {"type": "BODY", "add_security_recommendation": True},
+        {"type": "FOOTER", "code_expiration_minutes": 10},
+        {"type": "BUTTONS", "buttons": [{"type": "OTP", "otp_type": "COPY_CODE"}]},
+    ],
+)
+await client.templates.create(business_account_id="123", **auth)
+
+# Named-parameter UTILITY template
+named = build_template_definition(
+    name="order_confirmation_named",
+    language="en_US",
+    category="UTILITY",
+    parameter_format="NAMED",
+    components=[
+        {
+            "type": "BODY",
+            "text": "Thanks {{customer_name}}! Your order {{order_number}} ships {{ship_date}}.",
+            "example": {
+                "body_text_named_params": [
+                    {"param_name": "customer_name", "example": "Ada"},
+                    {"param_name": "order_number", "example": "1234"},
+                    {"param_name": "ship_date", "example": "2026-05-01"},
+                ],
+            },
+        },
+    ],
+)
 ```
 
 ---

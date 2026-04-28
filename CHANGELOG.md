@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Template builder helpers** for parity with the TS SDK (`@kapso/whatsapp-cloud-api`):
+  - `build_template_payload(name=, language=, components=)` — pass-through validator for raw Meta-style components.
+  - `build_template_send_payload(name=, language=, body=, header=, buttons=)` — typed shortcut that assembles `components` from flat per-section lists. The high-value ergonomic improvement.
+  - `build_template_definition(name=, category=, language=, components=, parameter_format=, message_send_ttl_seconds=)` — create-time validator that returns a dict ready to splat into `client.templates.create()`.
+- All three exposed from the top level: `from kapso_whatsapp import build_template_payload, build_template_send_payload, build_template_definition`.
+- 22 new tests covering happy paths, validation errors, camelCase aliases, and parity with direct Pydantic construction (340 tests total).
+
+### Documentation
+- New "Template Builders" section in `docs/api-reference.md` with worked examples for all three helpers (raw passthrough, typed shortcut, AUTHENTICATION + NAMED-parameter definitions).
+
 ## [0.2.0] - 2026-04-28
 
 ### Added

@@ -20,6 +20,11 @@ Example:
     ...     )
 """
 
+from .builders import (
+    build_template_definition,
+    build_template_payload,
+    build_template_send_payload,
+)
 from .client import DEFAULT_KAPSO_URL, WhatsAppClient
 from .exceptions import (
     AuthenticationError,
@@ -150,6 +155,10 @@ __all__ = [
     "KapsoMessageField",
     "build_kapso_fields",
     "build_kapso_message_fields",
+    # Template builders (TS SDK parity)
+    "build_template_definition",
+    "build_template_payload",
+    "build_template_send_payload",
     # Configuration
     "ClientConfig",
     # Enums
