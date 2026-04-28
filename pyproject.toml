@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kapso-whatsapp-cloud-api"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python client for WhatsApp Business Cloud API with Pydantic validation and async support"
 readme = "README.md"
 license = "MIT"

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-28
+
 ### Added
 - **Template builder helpers** for parity with the TS SDK (`@kapso/whatsapp-cloud-api`):
   - `build_template_payload(name=, language=, components=)` — pass-through validator for raw Meta-style components.
