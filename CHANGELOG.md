@@ -5,27 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2026-04-27
+## [0.2.0] - 2026-04-28
 
 ### Added
 - **`KapsoPlatformClient`** — new sibling client for the Kapso Platform API at `https://api.kapso.ai/platform/v1`. Manages your Kapso project itself (separate from messaging via `WhatsAppClient`).
-- **18 Platform resources, ~87 endpoints**:
-  - Onboarding: `customers`, `setup_links`, `phone_numbers`, `display_names`, `users`
-  - Messaging ops: `messages`, `conversations` (incl. assignments), `contacts`, `media`
+- **18 Platform resources, ~87 endpoints**, all live-verified against `api.kapso.ai`:
+  - Onboarding: `customers`, `setup_links`, `phone_numbers` (incl. health check), `display_names`, `users`
+  - Messaging ops: `messages` (list/get), `conversations` (incl. assignments), `contacts` (incl. erase), `media` (upload)
   - Broadcasts: `broadcasts` (incl. recipients/send/schedule/cancel), `provider_models`
-  - Webhooks & logs: `project_webhooks` (incl. test), `webhooks`, `webhook_deliveries`, `api_logs`
+  - Webhooks & logs: `project_webhooks` (incl. test), `webhooks` (phone-number-scoped), `webhook_deliveries`, `api_logs`
   - Data & integrations: `database` (query/insert/upsert/update/delete/get), `integrations` (apps, actions, accounts, connect tokens, action schemas)
   - WhatsApp Flows: `whatsapp_flows` (flows, versions, data endpoint lifecycle, function logs/invocations)
-- Every paginated `list(...)` has a matching `iter(...)` async generator that walks all pages automatically (page-based pagination via `meta.page` / `meta.total_pages`).
-- `KapsoPlatformClient.request_raw()` — full envelope (`data` + `meta`) for callers that need pagination metadata or rate-limit headers.
-- 208 new tests covering the Platform client and every resource (265 tests total).
+- Every paginated `list(...)` has a matching `iter(...)` async generator that walks all pages automatically. Pagination accepts both `meta.page` and `meta.current_page` field naming.
+- `KapsoPlatformClient.request_raw()` returns the full `{data, meta}` envelope; `request()` returns the unwrapped `data` payload; `paginate()` is a generic async iterator for arbitrary list endpoints.
+- Top-level exports: `from kapso_whatsapp import KapsoPlatformClient, DEFAULT_PLATFORM_URL`.
+- `examples/platform_smoke.py` — read-only health check across all 18 resources.
+- `examples/platform_onboarding.py` — customer + setup link end-to-end.
+- 208 new tests covering the Platform client and every resource (**265 tests total**, all passing).
 
 ### Changed
-- Internal: extracted shared HTTP transport (httpx pool + retry/backoff + error categorization) into a private `_HttpCore` class. Both `WhatsAppClient` and `KapsoPlatformClient` delegate to it. `WhatsAppClient` public surface unchanged.
-- README: added Kapso Platform API section with the full resource table and quickstart.
+- Internal: extracted shared HTTP transport (httpx pool + retry/backoff + error categorization) into a private `_HttpCore` class. Both `WhatsAppClient` and `KapsoPlatformClient` delegate to it. `WhatsAppClient` public surface is **unchanged**; existing 57 messaging tests still pass.
+
+### Fixed
+- Pydantic models for `ProjectUser`, `Webhook`, and `ProjectWebhook` were too strict for real API responses (required fields the API can return as `null`). Now use `extra="allow"` and optional fields, matching the live shape.
+
+### Documentation
+- New `docs/platform-api.md` — comprehensive Platform API reference (612 lines).
+- `docs/architecture.md` — updated for two-client topology + shared `_HttpCore`; module tree reflects `platform/` subtree.
+- `docs/examples.md` — added Platform examples section (onboarding, CRM sync, scheduled broadcasts, database queries, webhook provisioning, failed-delivery replay, mixing both clients, flow lifecycle).
+- `docs/api-reference.md`, `README.md` — link to Platform reference.
+- `CONTRIBUTING.md` — Platform fixtures + step-by-step guide for adding a new Platform resource.
+- `IMPLEMENTATION_PLAN.md` — v0.2.0 status documented.
 
 ### Notes
 - The package is still distributed as `kapso_whatsapp`. With Platform support added, the name is slightly inaccurate — a rename to `kapso` is being considered for `1.0`. A deprecation shim will keep existing imports working.
+- Tagged as `v0.2.0` on GitHub. Not yet published to PyPI.
 
 ## [0.1.4] - 2026-01-24
 
