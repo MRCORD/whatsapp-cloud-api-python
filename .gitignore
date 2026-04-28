@@ -84,3 +84,4 @@ Thumbs.db
 
 # Firecrawl scrape outputs
 .firecrawl/
+.claude/
