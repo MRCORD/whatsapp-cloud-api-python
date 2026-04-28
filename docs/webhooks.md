@@ -10,6 +10,7 @@ Complete guide for integrating WhatsApp webhooks with the Kapso WhatsApp Cloud A
 - [Payload Normalization](#payload-normalization)
 - [Message Types](#message-types)
 - [Status Updates](#status-updates)
+- [Identity Fields and BSUIDs](#identity-fields-and-bsuids)
 - [Direction Inference](#direction-inference)
 - [Framework Examples](#framework-examples)
 - [Best Practices](#best-practices)
@@ -465,6 +466,94 @@ if status.pricing:
     print(f"Category: {pricing.category}")
     # e.g., "marketing", "utility", "authentication"
 ```
+
+---
+
+## Identity Fields and BSUIDs
+
+Meta is rolling out **business-scoped user IDs (BSUIDs)** as a new way to identify WhatsApp users. WhatsApp users who adopt a `@username` can message your business without revealing their phone number, so `phone_number` and `wa_id` can now be `null` in some payloads.
+
+The SDK's webhook models accept the new identity fields and tolerate missing phone-based fields. **Existing phone-based code paths remain unchanged** — BSUID is purely additive during the rollout.
+
+### What's in payloads now
+
+Three new identity fields can appear on `WebhookMessage`, `WebhookStatus`, `MessageContact`, normalized status updates, and call events:
+
+| Field | Description |
+|---|---|
+| `business_scoped_user_id` | The user's primary identifier *within your business portfolio*. **Match users by this first when present.** |
+| `parent_business_scoped_user_id` | A parent BSUID for managed businesses with linked portfolios. Only present in some accounts. |
+| `username` | The user's `@handle` if they've adopted one. Useful for display, not stable enough to key on. |
+
+And two existing fields are now `Optional`:
+
+- `WebhookMessage.from_` — null for username-only inbound messages
+- `WebhookStatus.recipient_id` — null when the recipient is identified by BSUID
+- `MessageContact.wa_id` — null on send-response when only a BSUID identifies the contact
+
+### Reading identity from a webhook message
+
+```python
+from kapso_whatsapp.webhooks import normalize_webhook
+
+result = normalize_webhook(payload)
+for msg in result.messages:
+    # Match by BSUID first; fall back to phone
+    user_id = (
+        msg.get("businessScopedUserId")
+        or msg.get("from")  # may be null on BSUID-only payloads
+    )
+    if user_id is None:
+        # Genuinely no identifier — skip or log
+        continue
+    handle = process_user(user_id)
+    print(handle, msg.get("username"))
+```
+
+The `from`, `wa_id`, BSUID, and username fields are all surfaced on the
+normalized message dict. You decide which to key on.
+
+### Direction inference under BSUID
+
+`webhooks/normalize.py` infers direction by string-matching `from`/`to` against the business `phone_number_id`. When `from` is `null` (BSUID-only inbound), the normalizer falls back to: *if BSUID is present and no phone is set, this is an inbound customer message* (Meta only routes such payloads user → business). Existing phone-based logic is untouched, so this is a fall-back-only change.
+
+### Identity-change events (raw Meta forwarding only)
+
+If you receive forwarded raw Meta webhooks (rather than Kapso-shaped events), Meta sometimes sends identity-reconciliation signals when a user's identity changes. The SDK surfaces these on `result.identity_events` as `IdentityChangeEvent` instances:
+
+```python
+from kapso_whatsapp.webhooks import normalize_webhook
+
+result = normalize_webhook(payload)
+for event in result.identity_events:
+    print(f"User changed: {event.previous_wa_id} → "
+          f"BSUID={event.business_scoped_user_id}, "
+          f"new_wa_id={event.new_wa_id}")
+    # Reconcile with your identity store — DON'T create a new user blindly
+```
+
+Two underlying shapes feed this list:
+
+1. A top-level `user_id_update` field on the webhook value (Meta carries it as a sibling of `messages` / `statuses`).
+2. A message of type `system` with `system.type == "user_changed_user_id"`.
+
+Kapso's normal webhook events do not surface identity-change events — Kapso reconciles internally. These events only appear when you've configured raw Meta forwarding.
+
+### Migration checklist
+
+- Make `wa_id`, `phone_number`, `from`, `to` nullable in your own database
+- Store `business_scoped_user_id`, `parent_business_scoped_user_id`, `username`
+- Match users by BSUID first, then by phone
+- Don't crash if either is missing
+- Keep outbound sending phone-based for now
+- Test BSUID-only payloads against your integration before the rollout reaches your number
+
+### Related documentation
+
+- [Kapso BSUID guide](https://docs.kapso.ai/docs/whatsapp/business-scoped-user-ids) — the canonical migration reference
+- [Receive messages](https://docs.kapso.ai/docs/whatsapp/receive-messages) — both Kapso-webhook and Meta-forwarding integration paths
+- [WhatsApp data](https://docs.kapso.ai/docs/platform/whatsapp-data) — full identity field map across conversations/messages/contacts/calls
+- [Meta: business-scoped user IDs](https://developers.facebook.com/documentation/business-messaging/whatsapp/business-scoped-user-ids/) — Meta's underlying spec
 
 ---
 

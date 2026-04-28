@@ -2,6 +2,13 @@
 Calls Resource (Kapso Proxy Only)
 
 Handles call operations and call logs.
+
+Note on BSUIDs (rolling out 2026): call payloads can carry
+``business_scoped_user_id``, ``parent_business_scoped_user_id``, and
+``username`` alongside ``user_wa_id``. This resource returns raw dicts,
+so the new fields appear under those keys without code changes — match
+users by BSUID first when present. See
+https://docs.kapso.ai/docs/whatsapp/business-scoped-user-ids
 """
 
 from __future__ import annotations

@@ -15,12 +15,19 @@ from typing import Any
 
 @dataclass
 class MessageStatusUpdate:
-    """Normalized message status update."""
+    """Normalized message status update.
+
+    BSUID rollout: ``recipient_id`` (the target's wa_id) may be null when
+    the recipient is identified only by ``business_scoped_user_id``.
+    """
 
     id: str
     status: str
     timestamp: str | None = None
     recipient_id: str | None = None
+    business_scoped_user_id: str | None = None
+    parent_business_scoped_user_id: str | None = None
+    username: str | None = None
     conversation: dict[str, Any] | None = None
     pricing: dict[str, Any] | None = None
     errors: list[dict[str, Any]] | None = None
@@ -29,7 +36,11 @@ class MessageStatusUpdate:
 
 @dataclass
 class NormalizedCallEvent:
-    """Normalized call event."""
+    """Normalized call event.
+
+    BSUID rollout: ``from_`` / ``to`` may be null on calls from username-only
+    users; the user is then identified by ``business_scoped_user_id``.
+    """
 
     event: str | None = None
     call_id: str | None = None
@@ -37,6 +48,9 @@ class NormalizedCallEvent:
     status: str | None = None
     from_: str | None = None
     to: str | None = None
+    business_scoped_user_id: str | None = None
+    parent_business_scoped_user_id: str | None = None
+    username: str | None = None
     start_time: int | None = None
     end_time: int | None = None
     duration: int | None = None
@@ -44,12 +58,36 @@ class NormalizedCallEvent:
 
 
 @dataclass
+class IdentityChangeEvent:
+    """Meta identity-reconciliation signal.
+
+    Surfaced only on the *raw Meta forwarding* path (when consumers route
+    Meta webhooks directly to their endpoint). The two underlying shapes
+    are ``user_id_update`` (a Meta webhook field) and
+    ``user_changed_user_id`` (a Meta system message). Both indicate that
+    a user's identity was updated; the consumer should reconcile against
+    its own identity store rather than create a new contact.
+
+    See: https://docs.kapso.ai/docs/whatsapp/business-scoped-user-ids
+    """
+
+    previous_wa_id: str | None = None
+    new_wa_id: str | None = None
+    business_scoped_user_id: str | None = None
+    parent_business_scoped_user_id: str | None = None
+    username: str | None = None
+    timestamp: str | None = None
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class NormalizedWebhookResult:
     """
     Normalized webhook payload container.
 
-    Provides consistent access to messages, statuses, calls, and contacts
-    regardless of raw webhook structure variations.
+    Provides consistent access to messages, statuses, calls, contacts,
+    and identity-change events regardless of raw webhook structure
+    variations.
     """
 
     object: str | None = None
@@ -59,6 +97,7 @@ class NormalizedWebhookResult:
     messages: list[dict[str, Any]] = field(default_factory=list)
     statuses: list[MessageStatusUpdate] = field(default_factory=list)
     calls: list[NormalizedCallEvent] = field(default_factory=list)
+    identity_events: list[IdentityChangeEvent] = field(default_factory=list)
     raw: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
 
@@ -177,6 +216,13 @@ def normalize_webhook(payload: Any) -> NormalizedWebhookResult:
                                 status=str(normalized_status.get("status", "")),
                                 timestamp=normalized_status.get("timestamp"),
                                 recipient_id=normalized_status.get("recipientId"),
+                                business_scoped_user_id=normalized_status.get(
+                                    "businessScopedUserId"
+                                ),
+                                parent_business_scoped_user_id=normalized_status.get(
+                                    "parentBusinessScopedUserId"
+                                ),
+                                username=normalized_status.get("username"),
                                 conversation=normalized_status.get("conversation"),
                                 pricing=normalized_status.get("pricing"),
                                 errors=normalized_status.get("errors"),
@@ -189,6 +235,9 @@ def normalize_webhook(payload: Any) -> NormalizedWebhookResult:
                                         "status",
                                         "timestamp",
                                         "recipientId",
+                                        "businessScopedUserId",
+                                        "parentBusinessScopedUserId",
+                                        "username",
                                         "conversation",
                                         "pricing",
                                         "errors",
@@ -215,6 +264,13 @@ def normalize_webhook(payload: Any) -> NormalizedWebhookResult:
                                 status=normalized_call.get("status"),
                                 from_=normalized_call.get("from"),
                                 to=normalized_call.get("to"),
+                                business_scoped_user_id=normalized_call.get(
+                                    "businessScopedUserId"
+                                ),
+                                parent_business_scoped_user_id=normalized_call.get(
+                                    "parentBusinessScopedUserId"
+                                ),
+                                username=normalized_call.get("username"),
                                 start_time=normalized_call.get("startTime"),
                                 end_time=normalized_call.get("endTime"),
                                 duration=normalized_call.get("duration"),
@@ -230,6 +286,9 @@ def normalize_webhook(payload: Any) -> NormalizedWebhookResult:
                                         "status",
                                         "from",
                                         "to",
+                                        "businessScopedUserId",
+                                        "parentBusinessScopedUserId",
+                                        "username",
                                         "startTime",
                                         "endTime",
                                         "duration",
@@ -237,6 +296,12 @@ def normalize_webhook(payload: Any) -> NormalizedWebhookResult:
                                 },
                             )
                         )
+
+            # Extract identity-change events (raw Meta forwarding only).
+            # Two shapes appear: a top-level `user_id_update` value field, or a
+            # message of type `system` with `system.type == "user_changed_user_id"`.
+            for evt in _extract_identity_events(value):
+                result.identity_events.append(evt)
 
     return result
 
@@ -285,7 +350,14 @@ def _normalize_message(message: dict[str, Any]) -> dict[str, Any]:
 def _apply_direction(
     message: dict[str, Any], metadata: dict[str, Any], is_echo: bool
 ) -> None:
-    """Determine and apply message direction."""
+    """Determine and apply message direction.
+
+    Phone-based inference is the primary path. When ``from`` is null
+    (BSUID-only payload from a username-only user), the message is a
+    customer-originated inbound by definition (Meta only routes such
+    payloads from user → business), so we default to inbound rather
+    than leaving direction unset.
+    """
     business_candidates: list[str] = []
 
     phone_number_id = metadata.get("phoneNumberId")
@@ -308,11 +380,17 @@ def _apply_direction(
     from_norm = _normalize_number(message.get("from", ""))
     to_norm = _normalize_number(message.get("to", ""))
 
+    has_bsuid = bool(message.get("businessScopedUserId"))
+
     direction: str | None = None
 
     if is_echo or from_norm and from_norm in business_set:
         direction = "outbound"
     elif to_norm and to_norm in business_set or context_from and _normalize_number(context_from) in business_set or from_norm:
+        direction = "inbound"
+    elif has_bsuid and not from_norm:
+        # BSUID-only payload — phone fields are null. Meta only routes such
+        # payloads user → business, so this is an inbound customer message.
         direction = "inbound"
 
     if direction or is_echo:
@@ -321,6 +399,58 @@ def _apply_direction(
             kapso["direction"] = direction
         if is_echo:
             kapso["source"] = "smb_message_echo"
+
+
+def _extract_identity_events(value: dict[str, Any]) -> list[IdentityChangeEvent]:
+    """Extract Meta identity-reconciliation signals from a webhook value.
+
+    Recognizes two shapes (see Meta docs):
+
+    1. Top-level ``user_id_update`` field (camelCased to ``userIdUpdate``):
+       carries ``previousWaId`` / ``newWaId`` / BSUID + timestamp.
+    2. A message of type ``system`` with
+       ``system.type == "user_changed_user_id"``: carries similar fields
+       inside ``system``.
+
+    Both shapes only appear on the raw Meta forwarding path. Kapso's own
+    webhook events do not surface these (Kapso reconciles internally).
+    """
+    events: list[IdentityChangeEvent] = []
+
+    user_id_update = value.get("userIdUpdate")
+    if isinstance(user_id_update, dict):
+        events.append(_identity_event_from(user_id_update))
+    elif isinstance(user_id_update, list):
+        for entry in user_id_update:
+            if isinstance(entry, dict):
+                events.append(_identity_event_from(entry))
+
+    for msg in value.get("messages", []) or []:
+        if not isinstance(msg, dict) or msg.get("type") != "system":
+            continue
+        system = msg.get("system")
+        if isinstance(system, dict) and system.get("type") == "user_changed_user_id":
+            events.append(_identity_event_from(system, fallback_timestamp=msg.get("timestamp")))
+
+    return events
+
+
+def _identity_event_from(
+    obj: dict[str, Any], fallback_timestamp: str | None = None
+) -> IdentityChangeEvent:
+    """Build an IdentityChangeEvent from a raw dict, accepting both
+    snake_case (Meta) and camelCase (post-normalization) field names."""
+    return IdentityChangeEvent(
+        previous_wa_id=obj.get("previous_wa_id") or obj.get("previousWaId"),
+        new_wa_id=obj.get("new_wa_id") or obj.get("newWaId"),
+        business_scoped_user_id=obj.get("business_scoped_user_id")
+        or obj.get("businessScopedUserId"),
+        parent_business_scoped_user_id=obj.get("parent_business_scoped_user_id")
+        or obj.get("parentBusinessScopedUserId"),
+        username=obj.get("username"),
+        timestamp=obj.get("timestamp") or fallback_timestamp,
+        raw=dict(obj),
+    )
 
 
 def _normalize_number(value: str | None) -> str:

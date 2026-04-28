@@ -475,12 +475,22 @@ class TemplateMessageInput(BaseModel):
 
 
 class MessageContact(BaseModel):
-    """Contact info in message response."""
+    """Contact info in message response.
+
+    BSUID rollout: ``wa_id`` is now nullable because users with usernames
+    can be addressed without a phone-based id. See ``business_scoped_user_id``
+    and ``username`` for the new identity surface.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
     input: str
-    wa_id: str = Field(..., alias="waId")
+    wa_id: str | None = Field(default=None, alias="waId")
+    business_scoped_user_id: str | None = Field(default=None, alias="businessScopedUserId")
+    parent_business_scoped_user_id: str | None = Field(
+        default=None, alias="parentBusinessScopedUserId"
+    )
+    username: str | None = None
 
 
 class MessageInfo(BaseModel):
@@ -586,12 +596,19 @@ class WebhookButton(BaseModel):
 
 
 class WebhookMessage(BaseModel):
-    """Parsed webhook message."""
+    """Parsed webhook message.
+
+    BSUID rollout: ``from_`` (the sender's WhatsApp phone) is now nullable
+    because users with adopted usernames can message without exposing a
+    phone number. Match users by ``business_scoped_user_id`` first, then
+    fall back to ``from_`` / ``wa_id``. See
+    https://docs.kapso.ai/docs/whatsapp/business-scoped-user-ids
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
-    from_: str = Field(..., alias="from")
+    from_: str | None = Field(default=None, alias="from")
     timestamp: str
     type: MessageType
 
@@ -609,6 +626,13 @@ class WebhookMessage(BaseModel):
 
     # Context
     context: dict[str, Any] | None = None
+
+    # BSUID identity (additive — phone fields above remain primary during transition)
+    business_scoped_user_id: str | None = Field(default=None, alias="businessScopedUserId")
+    parent_business_scoped_user_id: str | None = Field(
+        default=None, alias="parentBusinessScopedUserId"
+    )
+    username: str | None = None
 
     # Kapso extensions
     direction: MessageDirection = MessageDirection.INBOUND
@@ -647,14 +671,23 @@ class WebhookStatusError(BaseModel):
 
 
 class WebhookStatus(BaseModel):
-    """Message delivery status from webhook."""
+    """Message delivery status from webhook.
+
+    BSUID rollout: ``recipient_id`` is now nullable; the recipient may be
+    identified by ``business_scoped_user_id`` instead.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
     status: MessageStatus
     timestamp: str
-    recipient_id: str = Field(..., alias="recipientId")
+    recipient_id: str | None = Field(default=None, alias="recipientId")
+    business_scoped_user_id: str | None = Field(default=None, alias="businessScopedUserId")
+    parent_business_scoped_user_id: str | None = Field(
+        default=None, alias="parentBusinessScopedUserId"
+    )
+    username: str | None = None
     conversation: WebhookStatusConversation | None = None
     pricing: WebhookStatusPricing | None = None
     errors: list[WebhookStatusError] | None = None

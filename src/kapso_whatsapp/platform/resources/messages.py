@@ -10,13 +10,15 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .base import PlatformBaseResource
 
 
 class MessageKapsoMeta(BaseModel):
     """Kapso-specific extensions on a WhatsApp message."""
+
+    model_config = ConfigDict(extra="allow")
 
     direction: str | None = None
     status: str | None = None
@@ -32,7 +34,15 @@ class MessageKapsoMeta(BaseModel):
 
 
 class Message(BaseModel):
-    """A WhatsApp message as returned by the Kapso Platform API."""
+    """A WhatsApp message as returned by the Kapso Platform API.
+
+    Identity fields cover both the Kapso shape (``business_scoped_user_id`` etc.)
+    and the Meta shape (``from_user_id``, ``to_user_id`` etc.) per
+    https://docs.kapso.ai/docs/platform/whatsapp-data — depending on the
+    payload variant returned, one or the other will be populated.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     id: str
     timestamp: str | None = None
@@ -41,7 +51,16 @@ class Message(BaseModel):
     kapso: MessageKapsoMeta | None = None
     text: dict[str, Any] | None = None
 
-    model_config = {"populate_by_name": True}
+    # Kapso-shape BSUID identity (additive)
+    business_scoped_user_id: str | None = None
+    parent_business_scoped_user_id: str | None = None
+    username: str | None = None
+
+    # Meta-shape identity (alternate to the Kapso-shape fields above)
+    from_user_id: str | None = None
+    from_parent_user_id: str | None = None
+    to_user_id: str | None = None
+    to_parent_user_id: str | None = None
 
     @classmethod
     def model_validate(cls, obj: Any, **kwargs: Any) -> Message:

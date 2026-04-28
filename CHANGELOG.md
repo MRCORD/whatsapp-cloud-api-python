@@ -13,10 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `build_template_send_payload(name=, language=, body=, header=, buttons=)` — typed shortcut that assembles `components` from flat per-section lists. The high-value ergonomic improvement.
   - `build_template_definition(name=, category=, language=, components=, parameter_format=, message_send_ttl_seconds=)` — create-time validator that returns a dict ready to splat into `client.templates.create()`.
 - All three exposed from the top level: `from kapso_whatsapp import build_template_payload, build_template_send_payload, build_template_definition`.
-- 22 new tests covering happy paths, validation errors, camelCase aliases, and parity with direct Pydantic construction (340 tests total).
+- **BSUID compatibility** for the messaging webhook surface (Meta's business-scoped user ID rollout):
+  - `WebhookMessage.from_`, `WebhookStatus.recipient_id`, and `MessageContact.wa_id` are now `Optional` (was required). Username-only users can message without a phone-based identifier.
+  - All three models gain `business_scoped_user_id`, `parent_business_scoped_user_id`, `username` Optional fields.
+  - `MessageStatusUpdate` and `NormalizedCallEvent` (the dataclasses returned by `normalize_webhook`) gain the same three identity fields.
+  - **New `IdentityChangeEvent` dataclass** + `NormalizedWebhookResult.identity_events` list. Surfaces Meta's `user_id_update` field and `user_changed_user_id` system messages on the raw-forward path so consumers can reconcile identity changes against their own store.
+  - `webhooks/normalize.py` direction inference falls back to BSUID-only-implies-inbound when phone fields are absent (existing phone-based logic untouched).
+  - Platform `Message` model gains both Kapso-shape (`business_scoped_user_id` etc.) and Meta-shape (`from_user_id`, `to_user_id`, etc.) BSUID fields per `docs/platform/whatsapp-data`.
+- Public types exported from top level: `IdentityChangeEvent` joins the existing webhook normalization exports.
+
+### Tests
+- 22 template-builder tests + 12 BSUID tests = 352 tests total (was 318 in v0.2.0). All passing. mypy + ruff clean.
 
 ### Documentation
 - New "Template Builders" section in `docs/api-reference.md` with worked examples for all three helpers (raw passthrough, typed shortcut, AUTHENTICATION + NAMED-parameter definitions).
+- New "Identity Fields and BSUIDs" section in `docs/webhooks.md` covering the new identity model, the migration checklist, raw-forward identity-change events, and cross-links to all four Kapso BSUID docs.
 
 ## [0.2.0] - 2026-04-28
 

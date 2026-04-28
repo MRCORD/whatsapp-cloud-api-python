@@ -7,6 +7,7 @@ Functions for handling WhatsApp webhooks:
 """
 
 from .normalize import (
+    IdentityChangeEvent,
     MessageStatusUpdate,
     NormalizedCallEvent,
     NormalizedWebhookResult,
@@ -20,4 +21,5 @@ __all__ = [
     "NormalizedWebhookResult",
     "MessageStatusUpdate",
     "NormalizedCallEvent",
+    "IdentityChangeEvent",
 ]

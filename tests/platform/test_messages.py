@@ -186,3 +186,57 @@ class TestDocExampleValidates:
             },
         }
         Message.model_validate(example)  # raises if model gets stricter than docs
+
+
+# =============================================================================
+# BSUID compatibility (rolling out 2026)
+# =============================================================================
+
+
+class TestBsuidShapes:
+    """Verify the Message model accepts both Kapso-shape and Meta-shape
+    BSUID identity fields (per docs/platform/whatsapp-data)."""
+
+    def test_kapso_shape_bsuid_fields_validate(self) -> None:
+        from kapso_whatsapp.platform.resources.messages import Message
+
+        msg = Message.model_validate({
+            "id": "msg-1",
+            "type": "text",
+            "from": "16315551181",
+            "business_scoped_user_id": "US.13491208655302741918",
+            "parent_business_scoped_user_id": "US.ENT.506847293015824",
+            "username": "@u",
+        })
+        assert msg.business_scoped_user_id == "US.13491208655302741918"
+        assert msg.parent_business_scoped_user_id == "US.ENT.506847293015824"
+        assert msg.username == "@u"
+
+    def test_meta_shape_user_id_fields_validate(self) -> None:
+        """Meta-shape alternate: from_user_id/to_user_id instead of
+        business_scoped_user_id. Doc lists them as alternates on message
+        payloads."""
+        from kapso_whatsapp.platform.resources.messages import Message
+
+        msg = Message.model_validate({
+            "id": "msg-2",
+            "type": "text",
+            "from_user_id": "US.111",
+            "from_parent_user_id": "US.ENT.222",
+            "to_user_id": "US.333",
+            "to_parent_user_id": "US.ENT.444",
+            "username": "@m",
+        })
+        assert msg.from_user_id == "US.111"
+        assert msg.from_parent_user_id == "US.ENT.222"
+        assert msg.to_user_id == "US.333"
+        assert msg.to_parent_user_id == "US.ENT.444"
+
+    def test_no_phone_no_wa_id_validates(self) -> None:
+        """A message with neither `from` nor any BSUID field still validates
+        (id is the only required field)."""
+        from kapso_whatsapp.platform.resources.messages import Message
+
+        msg = Message.model_validate({"id": "msg-3"})
+        assert msg.from_ is None
+        assert msg.business_scoped_user_id is None
