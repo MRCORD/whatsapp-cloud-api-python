@@ -126,29 +126,41 @@ Added a sibling client `KapsoPlatformClient` for the Kapso Platform API (`api.ka
 
 ### 🔄 Pending / Future Work
 
-#### Enhanced Testing
-- [ ] Integration tests with real API key (currently smoke script only)
-- [ ] End-to-end message flow tests
-- [ ] Template rendering tests
-- [ ] Flow encryption/decryption tests
-- [ ] Error handling edge cases
+#### Quality
+- [ ] CI workflow running `examples/platform_smoke.py` nightly against a dedicated test project (catches Pydantic-vs-API drift like the three we fixed in v0.2.0)
+- [ ] Audit Pydantic strictness on all 18 Platform resources — sample real responses for each, mark fields optional / add `extra="allow"` where the API returns nulls or extra keys
+- [ ] Tag-triggered PyPI publish via GitHub Actions trusted publishing (currently the v0.2.0 tag is pushed but PyPI publish is manual)
+- [ ] Audit `server/flows.py` test coverage for encryption/decryption (AES-GCM-128 over Meta's flow data exchange)
 
-#### Additional Features
-- [ ] Template definition builder (TypeScript SDK parity)
-- [ ] Message payload builders with validation
-- [ ] Retry policy customization (per-resource overrides)
-- [ ] Request/response interceptors
-- [ ] Logging configuration
-- [ ] Sync/blocking client wrapper (currently async-only)
+#### TS SDK Parity
+- [ ] Template definition builder — verify the TS SDK actually has one before committing to it
 
 #### Documentation
-- [ ] Migration guide from flowers-backend
-- [ ] Framework integration guides (FastAPI, Django)
-- [ ] Per-resource usage cookbooks for Platform endpoints (database, integrations)
+- [ ] Cookbook: `kp.database` patterns (idempotent upsert, schema migrations, query composition)
+- [ ] Cookbook: `kp.integrations` patterns (OAuth connect flow, action prop config, account discovery)
+- [ ] Deprecation policy doc — what counts as a breaking change vs a minor; how long shims live
 
-#### Possible 1.0
-- [ ] Package rename `kapso_whatsapp` → `kapso` with deprecation shim
-- [ ] Stabilize Platform API surface (some resources may grow methods)
+#### Track-by-waiting (build only when demand surfaces)
+- [ ] Sync/blocking client wrapper — wait for 3+ user requests; ship via `from kapso_whatsapp.sync import …` adapter
+- [ ] Custom retry policy callback — wait for a real issue; expose `retry_predicate(error) -> bool`
+
+#### 1.0 Considerations
+- [ ] Package rename `kapso_whatsapp` → `kapso` with deprecation shim that re-exports from old name
+- [ ] Cleaner fix for `# type: ignore[valid-type]` in Platform resource files (19 sites — caused by methods named `list` shadowing the builtin in mypy's class scope; pick: alias `_BuiltinList = list` at module level, or rename method to `index()` (breaking))
+
+### Removed from this plan (intentionally)
+
+These were in earlier drafts and have been removed because they're either already done, irrelevant, or pure speculation:
+
+- **End-to-end message flow tests** — vague; respx-mocked tests already exercise full request/response cycles, and "real API E2E" is the same as the CI smoke item above
+- **Template rendering tests** — the SDK doesn't render templates client-side; Meta does. Nothing to test.
+- **Error handling edge cases** — boilerplate without specifics; either we name the cases or drop it
+- **Message payload builders with validation** — Pydantic input models already are this (e.g. `TemplateMessageInput`, `InteractiveButtonsInput`)
+- **Request/response interceptors** — YAGNI; no demand. Subclassing `_HttpCore` is the escape hatch if anyone needs it
+- **Logging configuration** — the SDK already uses `logging.getLogger(__name__)`; nothing missing
+- **Migration guide from flowers-backend** — internal pre-history, no public users have flowers-backend code
+- **Framework integration guides (FastAPI, Django)** — generic async Python usage; webhooks doc already shows the pattern
+- **Retry policy per-resource overrides** — YAGNI; no demand. Single global retry config covers every actual case
 
 ## Key Design Decisions
 
