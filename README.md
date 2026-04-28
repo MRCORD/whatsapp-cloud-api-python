@@ -3,7 +3,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://img.shields.io/pypi/v/kapso-whatsapp-cloud-api.svg)](https://pypi.org/project/kapso-whatsapp-cloud-api/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-265%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-340%20passed-brightgreen.svg)]()
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
 
@@ -18,6 +18,7 @@ The package ships **two clients**:
 
 - **Full WhatsApp Cloud API Support**: Messages, templates, media, flows, and more
 - **Kapso Platform API**: 18 resources (customers, setup links, broadcasts, webhooks, database, integrations, WhatsApp Flows, …) covering the full Platform API surface
+- **Template Builders**: `build_template_send_payload`, `build_template_payload`, and `build_template_definition` for compose-time validation (TS SDK parity)
 - **Async/Await**: Built on httpx for efficient async HTTP operations
 - **Type Safety**: Pydantic v2 models for request/response validation
 - **Retry Logic**: Automatic retries with exponential backoff for transient errors
@@ -125,33 +126,28 @@ for status in result.statuses:
 
 ### Template Messages
 
+The `build_template_send_payload` helper assembles the Meta `components` structure from flat per-section lists — much less error-prone than hand-rolling the nested shape:
+
 ```python
-from kapso_whatsapp import (
-    WhatsAppClient,
-    TemplateSendPayload,
-    TemplateComponent,
-    TemplateParameter,
-)
+from kapso_whatsapp import WhatsAppClient, build_template_send_payload
 
 async with WhatsAppClient(access_token="token") as client:
+    template = build_template_send_payload(
+        name="order_confirmation",
+        language="en_US",
+        body=[
+            {"type": "text", "text": "John"},
+            {"type": "text", "text": "ORD-12345"},
+        ],
+    )
     await client.messages.send_template(
         phone_number_id="123456789",
         to="+15551234567",
-        template=TemplateSendPayload(
-            name="order_confirmation",
-            language="en_US",
-            components=[
-                TemplateComponent(
-                    type="body",
-                    parameters=[
-                        TemplateParameter(type="text", text="John"),
-                        TemplateParameter(type="text", text="ORD-12345"),
-                    ],
-                ),
-            ],
-        ),
+        template=template,
     )
 ```
+
+For raw Meta-style components, use `build_template_payload`. For creating new template definitions (and submitting to Meta for approval), use `build_template_definition`. See the [Template Builders reference](docs/api-reference.md#template-builders).
 
 ### Flow Server-Side Handling
 
@@ -346,12 +342,24 @@ client = WhatsAppClient(
 
 ## 📖 Documentation
 
-- **[API Reference](docs/api-reference.md)** — `WhatsAppClient` complete API documentation
+### Reference
+
+- **[API Reference](docs/api-reference.md)** — `WhatsAppClient` API + Template Builders
 - **[Platform API Reference](docs/platform-api.md)** — `KapsoPlatformClient`: 18 resources, ~87 endpoints
-- **[Examples](docs/examples.md)** — usage examples for both clients
-- **[Webhooks Guide](docs/webhooks.md)** — webhook signature verification + payload normalization
-- **[Architecture](docs/architecture.md)** — system design, two-client topology, diagrams
+- **[Examples](docs/examples.md)** — runnable usage examples for both clients
+- **[Webhooks Guide](docs/webhooks.md)** — signature verification + payload normalization
+- **[Architecture](docs/architecture.md)** — two-client topology, shared `_HttpCore`, diagrams
+
+### Cookbooks
+
+- **[Database Cookbook](docs/cookbook-database.md)** — idempotent upsert, query composition, schema-light migrations, pagination patterns
+- **[Integrations Cookbook](docs/cookbook-integrations.md)** — OAuth connect-token flow, app/action discovery, action prop configuration
+
+### Project
+
 - **[Changelog](CHANGELOG.md)** — version history
+- **[Deprecation Policy](docs/deprecation-policy.md)** — semver guarantees, breaking-change rules, deprecation timeline
+- **[Contributing](CONTRIBUTING.md)** — dev setup, testing, PR conventions
 
 ## 🧪 Development
 

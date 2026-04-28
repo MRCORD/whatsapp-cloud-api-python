@@ -133,7 +133,7 @@ Added a sibling client `KapsoPlatformClient` for the Kapso Platform API (`api.ka
 - [x] Audit `server/flows.py` test coverage — 17 new tests added in `tests/test_server_flows.py` (round-trip encrypt/decrypt, HMAC validation, tampering detection, metadata normalization, response builder, wire-case conversion). Uses AES-256-CBC + HMAC-SHA256 (truncated to 10 bytes) + PKCS7 padding (not AES-GCM as previously noted)
 
 #### TS SDK Parity
-- [ ] Template definition builder — **confirmed real gap**. TS SDK exposes `buildTemplateDefinition` and `buildTemplatePayload` (see github.com/gokapso/whatsapp-cloud-api-js and docs.kapso.ai/docs/whatsapp/typescript-sdk/templates). Python equivalent missing.
+- [x] Template builder helpers — shipped in `src/kapso_whatsapp/builders.py`: `build_template_payload`, `build_template_send_payload`, `build_template_definition`. 22 tests in `tests/test_builders.py`. Documented in `docs/api-reference.md#template-builders` and updated examples in `docs/examples.md`. Pending in `[Unreleased]` for the next minor.
 
 #### Documentation
 - [x] Cookbook: `kp.database` patterns — `docs/cookbook-database.md` (352 lines, 7 sections)
@@ -145,7 +145,6 @@ Added a sibling client `KapsoPlatformClient` for the Kapso Platform API (`api.ka
 - [x] `platform-api.md` integrations section corrected — `list_accounts(app_slug=…)`, `get_connect_token()` with no args, `create()` with `action_id`/`app_slug`, `get_action_schema()` with positional action_id, etc.
 - [x] `platform-api.md` users section now documents the `id`-as-integer-vs-UUID doc/live discrepancy
 - [x] `IntegrationsResource.get(id)` — investigated; the underlying API has no `GET /integrations/{id}` endpoint (only list/create/update/delete). Documented the workaround (filter from `list()`) in `platform-api.md`. Not adding a client-side helper unless someone asks for it
-
 #### Track-by-waiting (build only when demand surfaces)
 - [ ] Sync/blocking client wrapper — wait for 3+ user requests; ship via `from kapso_whatsapp.sync import …` adapter
 - [ ] Custom retry policy callback — wait for a real issue; expose `retry_predicate(error) -> bool`

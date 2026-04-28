@@ -365,123 +365,120 @@ await client.messages.send_interactive_flow(
 
 ## Template Messages
 
+The `build_template_send_payload` helper assembles the Meta `components` structure from flat per-section lists. Use it instead of hand-rolling `TemplateSendPayload` / `TemplateComponent` / `TemplateParameter`.
+
 ### Simple Template
 
 ```python
 from kapso_whatsapp import TemplateSendPayload
 
+# A bare template with no parameters — direct construction is fine here.
 await client.messages.send_template(
     phone_number_id="123456789",
     to="+15551234567",
-    template=TemplateSendPayload(
-        name="hello_world",
-        language="en_US",
-    ),
+    template=TemplateSendPayload(name="hello_world", language="en_US"),
 )
 ```
 
 ### Template with Body Parameters
 
 ```python
-from kapso_whatsapp import TemplateSendPayload, TemplateComponent, TemplateParameter
+from kapso_whatsapp import build_template_send_payload
 
+template = build_template_send_payload(
+    name="order_confirmation",
+    language="en_US",
+    body=[
+        {"type": "text", "text": "John"},
+        {"type": "text", "text": "ORD-12345"},
+        {"type": "text", "text": "$99.99"},
+    ],
+)
 await client.messages.send_template(
     phone_number_id="123456789",
     to="+15551234567",
-    template=TemplateSendPayload(
-        name="order_confirmation",
-        language="en_US",
-        components=[
-            TemplateComponent(
-                type="body",
-                parameters=[
-                    TemplateParameter(type="text", text="John"),
-                    TemplateParameter(type="text", text="ORD-12345"),
-                    TemplateParameter(type="text", text="$99.99"),
-                ],
-            ),
-        ],
-    ),
+    template=template,
 )
 ```
 
 ### Template with Header Image
 
 ```python
-from kapso_whatsapp import (
-    TemplateSendPayload,
-    TemplateComponent,
-    TemplateParameter,
-    MediaInput,
-)
+from kapso_whatsapp import build_template_send_payload
 
+template = build_template_send_payload(
+    name="promotional_offer",
+    language="en_US",
+    header=[
+        {"type": "image", "image": {"link": "https://example.com/promo.jpg"}},
+    ],
+    body=[
+        {"type": "text", "text": "50%"},
+        {"type": "text", "text": "SUMMER50"},
+    ],
+)
 await client.messages.send_template(
     phone_number_id="123456789",
     to="+15551234567",
-    template=TemplateSendPayload(
-        name="promotional_offer",
-        language="en_US",
-        components=[
-            TemplateComponent(
-                type="header",
-                parameters=[
-                    TemplateParameter(
-                        type="image",
-                        image=MediaInput(link="https://example.com/promo.jpg"),
-                    ),
-                ],
-            ),
-            TemplateComponent(
-                type="body",
-                parameters=[
-                    TemplateParameter(type="text", text="50%"),
-                    TemplateParameter(type="text", text="SUMMER50"),
-                ],
-            ),
-        ],
-    ),
+    template=template,
 )
 ```
 
 ### Template with Quick Reply Buttons
 
 ```python
-from kapso_whatsapp import TemplateSendPayload, TemplateComponent, TemplateParameter
+from kapso_whatsapp import build_template_send_payload
 
+template = build_template_send_payload(
+    name="appointment_reminder",
+    language="en_US",
+    body=[
+        {"type": "text", "text": "Dr. Smith"},
+        {"type": "text", "text": "Monday, Jan 15 at 2:00 PM"},
+    ],
+    buttons=[
+        {
+            "sub_type": "quick_reply",
+            "index": 0,
+            "parameters": [{"type": "payload", "payload": "confirm_appt"}],
+        },
+        {
+            "sub_type": "quick_reply",
+            "index": 1,
+            "parameters": [{"type": "payload", "payload": "reschedule_appt"}],
+        },
+    ],
+)
 await client.messages.send_template(
     phone_number_id="123456789",
     to="+15551234567",
-    template=TemplateSendPayload(
-        name="appointment_reminder",
-        language="en_US",
-        components=[
-            TemplateComponent(
-                type="body",
-                parameters=[
-                    TemplateParameter(type="text", text="Dr. Smith"),
-                    TemplateParameter(type="text", text="Monday, Jan 15 at 2:00 PM"),
-                ],
-            ),
-            TemplateComponent(
-                type="button",
-                subType="quick_reply",
-                index=0,
-                parameters=[
-                    TemplateParameter(type="payload", payload="confirm_appt"),
-                ],
-            ),
-            TemplateComponent(
-                type="button",
-                subType="quick_reply",
-                index=1,
-                parameters=[
-                    TemplateParameter(type="payload", payload="reschedule_appt"),
-                ],
-            ),
-        ],
-    ),
+    template=template,
 )
 ```
+
+### Creating a New Template Definition
+
+When you need to *create* a template (submit it to Meta for approval), use `build_template_definition`:
+
+```python
+from kapso_whatsapp import build_template_definition
+
+# Authentication template with a 60s TTL and a copy-code button
+auth = build_template_definition(
+    name="auth_code",
+    category="AUTHENTICATION",
+    language="en_US",
+    message_send_ttl_seconds=60,
+    components=[
+        {"type": "BODY", "add_security_recommendation": True},
+        {"type": "FOOTER", "code_expiration_minutes": 10},
+        {"type": "BUTTONS", "buttons": [{"type": "OTP", "otp_type": "COPY_CODE"}]},
+    ],
+)
+result = await client.templates.create(business_account_id="123456789", **auth)
+```
+
+See the [Template Builders reference](api-reference.md#template-builders) for the full catalog of supported component shapes.
 
 ---
 
