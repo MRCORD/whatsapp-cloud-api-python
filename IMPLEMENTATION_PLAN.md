@@ -124,30 +124,43 @@ Added a sibling client `KapsoPlatformClient` for the Kapso Platform API (`api.ka
 - [x] `README.md` — Platform quickstart + resource table
 - [x] `CHANGELOG.md` — v0.2.0 entry
 
-### 🔄 Pending / Future Work
+### ✅ v0.3.0 — Template builders + BSUID compatibility (2026-04-28)
 
-#### Quality
+Live on PyPI: https://pypi.org/project/kapso-whatsapp-cloud-api/0.3.0/
+
+#### Quality (post-v0.2.0 hardening)
 - [x] CI workflow running `examples/platform_smoke.py` nightly against a dedicated test project — `.github/workflows/platform-smoke.yml` (needs `KAPSO_API_TOKEN` repo secret)
 - [x] Audit Pydantic strictness on all 18 Platform resources — doc-example regression tests added across all 18 test files (53 new tests). All resource models proved already-permissive enough; no source changes needed beyond the 3 fixed during v0.2.0 smoke
-- [x] Tag-triggered PyPI publish via GitHub Actions trusted publishing — `.github/workflows/release.yml` (needs PyPI trusted publisher config + GitHub `pypi` environment)
-- [x] Audit `server/flows.py` test coverage — 17 new tests added in `tests/test_server_flows.py` (round-trip encrypt/decrypt, HMAC validation, tampering detection, metadata normalization, response builder, wire-case conversion). Uses AES-256-CBC + HMAC-SHA256 (truncated to 10 bytes) + PKCS7 padding (not AES-GCM as previously noted)
+- [x] Tag-triggered PyPI publish via GitHub Actions trusted publishing — `.github/workflows/release.yml` (workflow scaffolded; v0.3.0 actually shipped via manual `python -m build && twine upload` against PyPI API token in `.env`)
+- [x] Audit `server/flows.py` test coverage — 17 new tests in `tests/test_server_flows.py` (round-trip encrypt/decrypt, HMAC validation, tampering detection, metadata normalization, response builder, wire-case conversion). Uses AES-256-CBC + HMAC-SHA256 (truncated to 10 bytes) + PKCS7 padding (not AES-GCM as previously noted)
 
 #### TS SDK Parity
-- [x] Template builder helpers — shipped in `src/kapso_whatsapp/builders.py`: `build_template_payload`, `build_template_send_payload`, `build_template_definition`. 22 tests in `tests/test_builders.py`. Documented in `docs/api-reference.md#template-builders` and updated examples in `docs/examples.md`. Pending in `[Unreleased]` for the next minor.
+- [x] Template builder helpers — `build_template_payload`, `build_template_send_payload`, `build_template_definition` in `src/kapso_whatsapp/builders.py`. 22 tests. Documented in `docs/api-reference.md#template-builders`; examples rewritten in `docs/examples.md`.
+
+#### BSUID Compatibility (Meta business-scoped user ID rollout)
+- [x] Messaging webhook types accept null `from`/`wa_id`/`recipient_id`; carry `business_scoped_user_id`, `parent_business_scoped_user_id`, `username` — `WebhookMessage`, `WebhookStatus`, `MessageContact`
+- [x] `webhooks/normalize.py` — `MessageStatusUpdate`/`NormalizedCallEvent` carry the same identity fields; new `IdentityChangeEvent` dataclass + `NormalizedWebhookResult.identity_events` for raw-Meta-forward `user_id_update` / `user_changed_user_id` events; direction inference falls back to "BSUID-only implies inbound"
+- [x] Platform `Message` accepts both Kapso-shape (`business_scoped_user_id`) and Meta-shape (`from_user_id`/`to_user_id`/etc.) BSUID variants
+- [x] `resources/calls.py` returns raw dicts so BSUID fields pass through automatically; doc note added
+- [x] 12 BSUID tests in `tests/test_webhooks.py:TestBsuidPayloads` + 3 in `tests/platform/test_messages.py:TestBsuidShapes`
+- [x] `docs/webhooks.md` "Identity Fields and BSUIDs" section with migration checklist
 
 #### Documentation
 - [x] Cookbook: `kp.database` patterns — `docs/cookbook-database.md` (352 lines, 7 sections)
 - [x] Cookbook: `kp.integrations` patterns — `docs/cookbook-integrations.md` (551 lines)
 - [x] Deprecation policy doc — `docs/deprecation-policy.md` (232 lines)
+- [x] `platform-api.md` corrected to match real signatures (database `**filters`, integrations `app_slug=`, etc.)
+- [x] `IntegrationsResource.get(id)` investigated — no underlying API endpoint; documented workaround (filter `list()`)
 
-#### API gaps surfaced while writing the cookbooks
-- [x] `platform-api.md` database section corrected — now uses real `**filters` kwargs and positional `fields` dict for `update`
-- [x] `platform-api.md` integrations section corrected — `list_accounts(app_slug=…)`, `get_connect_token()` with no args, `create()` with `action_id`/`app_slug`, `get_action_schema()` with positional action_id, etc.
-- [x] `platform-api.md` users section now documents the `id`-as-integer-vs-UUID doc/live discrepancy
-- [x] `IntegrationsResource.get(id)` — investigated; the underlying API has no `GET /integrations/{id}` endpoint (only list/create/update/delete). Documented the workaround (filter from `list()`) in `platform-api.md`. Not adding a client-side helper unless someone asks for it
+### 🔄 Pending / Future Work
+
 #### Track-by-waiting (build only when demand surfaces)
 - [ ] Sync/blocking client wrapper — wait for 3+ user requests; ship via `from kapso_whatsapp.sync import …` adapter
 - [ ] Custom retry policy callback — wait for a real issue; expose `retry_predicate(error) -> bool`
+
+#### Operational
+- [ ] Configure `KAPSO_API_TOKEN` repo secret so the nightly smoke workflow runs (workflow YAML is in place)
+- [ ] Configure PyPI trusted publishing + GitHub `pypi` environment so the `release.yml` workflow can take over from manual twine uploads at the next bump
 
 #### 1.0 Considerations
 - [ ] Package rename `kapso_whatsapp` → `kapso` with deprecation shim that re-exports from old name

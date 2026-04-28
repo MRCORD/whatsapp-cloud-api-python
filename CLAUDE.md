@@ -82,15 +82,24 @@ For each Platform resource, there's a `TestDocExampleValidates` class in its tes
 
 - `src/kapso_whatsapp/server/flows.py` — AES-256-CBC + HMAC-SHA256 over Meta's flow data exchange. Security-critical. Tests in `tests/test_server_flows.py` cover round-trip + tamper detection.
 - `tests/conftest.py` fixtures — used by every test file. Adding a fixture here is fine; renaming/removing breaks 340+ tests.
-- `pyproject.toml` version field — bump only when shipping. Currently `0.2.0`. Next bump goes with whatever's accumulated under `## [Unreleased]` in `CHANGELOG.md`.
+- `pyproject.toml` version field — bump only when shipping. Currently `0.3.0`. Next bump goes with whatever's accumulated under `## [Unreleased]` in `CHANGELOG.md`.
 
 ## How releases work
 
-1. Commit + tag `vX.Y.Z` + push tag.
-2. GitHub Actions in `.github/workflows/release.yml` runs tests, builds, publishes to PyPI via OIDC trusted publishing.
-3. Operational prereq: a `pypi` GitHub environment must exist and PyPI must have the trusted publisher configured. See the comments at the top of `release.yml`.
+Two paths in this repo, used historically in this order:
 
-`v0.2.0` is currently tagged on GitHub but not yet published to PyPI (PyPI trusted publisher hasn't been configured by the user).
+1. **Manual** (what shipped `v0.3.0`): bump version in `pyproject.toml` + `__init__.py`, flip `[Unreleased]` → `[X.Y.Z] - <date>` in `CHANGELOG.md`, run `python -m build`, then `python -m twine upload dist/*`. Twine reads `TWINE_USERNAME` / `TWINE_PASSWORD` from `.env` (the project ships with these set; the password is a PyPI API token). Then `git tag -a vX.Y.Z` + push tag.
+2. **CI-driven** (configured but not yet exercised): `.github/workflows/release.yml` triggers on `v*.*.*` tag pushes, runs tests, builds, and publishes via OIDC trusted publishing. Operational prereq: a `pypi` GitHub environment must exist and PyPI must have the trusted publisher configured. See the comments at the top of `release.yml`.
+
+Either path verifies with a fresh-venv install:
+
+```bash
+python -m venv /tmp/.verify && /tmp/.verify/bin/pip install kapso-whatsapp-cloud-api==X.Y.Z
+/tmp/.verify/bin/python -c "from kapso_whatsapp import __version__; print(__version__)"
+rm -rf /tmp/.verify
+```
+
+Latest live: [`v0.3.0` on PyPI](https://pypi.org/project/kapso-whatsapp-cloud-api/0.3.0/) (template builders + BSUID compatibility).
 
 ## Where to learn more
 

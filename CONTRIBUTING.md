@@ -409,7 +409,7 @@ Clear description of the issue or feature.
 ### Environment
 
 - Python version: 3.10.x
-- Package version: 0.1.0
+- Package version: 0.3.0  (or `python -c "from kapso_whatsapp import __version__; print(__version__)"`)
 - Operating System: macOS/Linux/Windows
 
 ### Steps to Reproduce (for bugs)
