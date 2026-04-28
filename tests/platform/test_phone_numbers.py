@@ -286,3 +286,39 @@ class TestCheckHealth:
         result = await platform_client.phone_numbers.check_health(PHONE_NUMBER_ID)
         assert result.status == "unhealthy"
         assert result.error == "Token expired"
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from docs.kapso.ai/api/platform/v1/phone-numbers/get-phone-number
+    must remain parseable by PhoneNumber without modification."""
+
+    def test_phone_number_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.phone_numbers import PhoneNumber
+
+        example = {
+            "id": "<string>",
+            "internal_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "phone_number_id": "<string>",
+            "name": "<string>",
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "business_account_id": "<string>",
+            "is_coexistence": True,
+            "inbound_processing_enabled": True,
+            "calls_enabled": True,
+            "webhook_verified_at": "2023-11-07T05:31:56Z",
+            "customer_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "display_name": "<string>",
+            "display_phone_number": "<string>",
+            "display_phone_number_normalized": "<string>",
+            "verified_name": "<string>",
+            "quality_rating": "<string>",
+            "code_verification_status": "<string>",
+            "name_status": "<string>",
+            "status": "<string>",
+            "throughput_tier": "<string>",
+            "whatsapp_business_manager_messaging_limit": 123,
+            "is_official_business_account": True,
+            "is_pin_enabled": True,
+        }
+        PhoneNumber.model_validate(example)  # raises if model gets stricter than docs

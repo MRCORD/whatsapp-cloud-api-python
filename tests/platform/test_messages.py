@@ -141,3 +141,48 @@ class TestGet:
         )
         result = await platform_client.messages.get("wamid.xyz")
         assert result.from_ == "14155550123"
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from docs.kapso.ai/api/platform/v1/messages/get-message
+    must remain parseable by Message without modification."""
+
+    def test_message_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.messages import Message
+
+        example = {
+            "id": "wamid.HBgMMTIzNDU2Nzg5MBUCABIYGTA5RTlCQkI2NTI3",
+            "timestamp": "1705395000",
+            "type": "text",
+            "from": "14155550123",
+            "text": {
+                "body": "Hello, I need help with my order",
+            },
+            "kapso": {
+                "direction": "inbound",
+                "status": "read",
+                "processing_status": "processed",
+                "origin": "cloud_api",
+                "phone_number": "14155550123",
+                "phone_number_id": "123456789012345",
+                "has_media": False,
+                "whatsapp_conversation_id": "c63ced48-1283-4d55-8c8d-930f525aa0e5",
+                "contact_name": "Alicia",
+                "content": "Hello, I need help with my order",
+                "statuses": [
+                    {
+                        "id": "wamid.HBgMMTIzNDU2Nzg5MBUCABIYGTA5RTlCQkI2NTI3",
+                        "status": "delivered",
+                        "timestamp": "1705395005",
+                        "recipient_id": "14155550123",
+                    },
+                    {
+                        "id": "wamid.HBgMMTIzNDU2Nzg5MBUCABIYGTA5RTlCQkI2NTI3",
+                        "status": "read",
+                        "timestamp": "1705395300",
+                        "recipient_id": "14155550123",
+                    },
+                ],
+            },
+        }
+        Message.model_validate(example)  # raises if model gets stricter than docs

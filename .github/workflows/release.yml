@@ -1,0 +1,73 @@
+# Tag-triggered PyPI publish using OIDC trusted publishing.
+#
+# Setup (one-time, on PyPI):
+#   1. Go to https://pypi.org/manage/account/publishing/ and add a "pending
+#      publisher" or, if the project already exists, configure trusted
+#      publishing for it. Use:
+#        Owner:           MRCORD
+#        Repository:      whatsapp-cloud-api-python
+#        Workflow name:   release.yml
+#        Environment:     pypi  (must match the `environment:` block below)
+#   2. In GitHub repo Settings → Environments, create an environment named
+#      `pypi` with a required reviewer if you want a manual gate before
+#      publish.
+#
+# After setup, push a vX.Y.Z tag and this workflow:
+#   1. Runs the full test suite.
+#   2. Builds sdist + wheel.
+#   3. Publishes to PyPI via OIDC (no API token in the repo).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"  # pre-release tags like v0.2.0-rc1
+
+jobs:
+  test:
+    name: Test before publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - run: mypy src/
+      - run: ruff check src/ tests/
+
+  build:
+    name: Build sdist and wheel
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi  # must match the trusted-publisher config on PyPI
+    permissions:
+      id-token: write  # required for OIDC trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

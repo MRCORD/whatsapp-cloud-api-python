@@ -194,3 +194,28 @@ class TestRetrieve:
         assert result.status == "declined"
         assert result.meta_error_code == 100
         assert result.meta_error_message == "Display name does not match"
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from
+    docs.kapso.ai/api/platform/v1/display-names/retrieve-display-name-request
+    must remain parseable by DisplayNameRequest without modification."""
+
+    def test_display_name_request_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.display_names import DisplayNameRequest
+
+        example = {
+            "id": "2b0f4a1e-7a58-4a15-b0c9-0d7f1a2b3c4d",
+            "phone_number_id": "1234567890",
+            "requested_display_name": "Acme Support",
+            "previous_display_name": "+1 555-123-4567",
+            "status": "approved",
+            "submitted_at": "2025-07-14T15:00:00Z",
+            "reviewed_at": "2025-07-15T12:34:00Z",
+            "applied_at": "2025-07-16T09:00:00Z",
+            "meta_error_code": None,
+            "meta_error_subcode": None,
+            "meta_error_type": None,
+            "meta_error_message": None,
+        }
+        DisplayNameRequest.model_validate(example)  # raises if model gets stricter than docs

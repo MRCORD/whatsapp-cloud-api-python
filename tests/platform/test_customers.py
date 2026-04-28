@@ -153,3 +153,20 @@ class TestDelete:
         mock_platform_api.delete("/customers/abc").mock(return_value=Response(204))
         result = await platform_client.customers.delete("abc")
         assert result is None
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from docs.kapso.ai/api/platform/v1/customers/get-customer
+    must remain parseable by Customer without modification."""
+
+    def test_customer_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.types import Customer
+
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "name": "<string>",
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "external_customer_id": "<string>",
+        }
+        Customer.model_validate(example)  # raises if model gets stricter than docs

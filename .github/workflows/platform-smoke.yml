@@ -1,0 +1,54 @@
+# Nightly smoke test against the live Kapso Platform API.
+#
+# Catches Pydantic-vs-API drift on the 18 Platform resources by hitting one
+# read endpoint per resource. Three v0.2.0 strictness bugs would have been
+# caught by this earlier had it existed.
+#
+# Setup (one-time):
+#   1. Repository Settings → Secrets and variables → Actions → New repository
+#      secret named KAPSO_API_TOKEN. Use an API key scoped to a non-production
+#      Kapso project (this workflow only does GET requests, but defense in
+#      depth).
+#   2. Workflow has no other prerequisites — `pip install -e .` covers the
+#      package and `examples/platform_smoke.py` is read-only against the API.
+
+name: Platform smoke
+
+on:
+  schedule:
+    # Daily at 06:00 UTC. Adjust if you want a different cadence.
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}  # allow manual triggers from the Actions tab
+
+jobs:
+  smoke:
+    name: GET-only sweep across 18 Platform resources
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Run platform smoke
+        env:
+          KAPSO_API_TOKEN: ${{ secrets.KAPSO_API_TOKEN }}
+        run: |
+          if [ -z "$KAPSO_API_TOKEN" ]; then
+            echo "::error::KAPSO_API_TOKEN secret is not configured."
+            echo "::error::Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          python examples/platform_smoke.py | tee smoke.log
+
+          # Fail the run if any line indicates a failure
+          if grep -q "^  ✗ " smoke.log; then
+            echo "::error::At least one resource failed validation. Check the log above."
+            exit 1
+          fi

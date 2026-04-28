@@ -6,6 +6,7 @@ import respx
 from httpx import Response
 
 from kapso_whatsapp.platform import KapsoPlatformClient
+from kapso_whatsapp.platform.resources.media import MediaIngestResult
 
 PHONE_NUMBER_ID = "713452918527238"
 SOURCE_URL = "https://upload.wikimedia.org/wikipedia/commons/2/2f/Example.png"
@@ -85,4 +86,32 @@ class TestUpload:
         assert result.resource is not None
         assert result.resource.filename == "Example.png"
         assert result.resource.mime_type == "image/png"
+        assert result.resource.size_bytes == 2335
+
+
+class TestDocExampleValidates:
+    """Regression tests: doc response examples must validate without error."""
+
+    def test_media_upload_doc_example_validates(self) -> None:
+        # Source: https://docs.kapso.ai/api/platform/v1/media/upload-media
+        # Response 200 meta_media_success — all fields present and non-null.
+        example = {
+            "ingest_id": "8a9b0c1d-2e3f-4a5b-6c7d-8e9f0a1b2c3d",
+            "target": {
+                "kind": "meta_media",
+                "media_id": "1234567890123456",
+            },
+            "resource": {
+                "filename": "Example.png",
+                "mime_type": "image/png",
+                "size_bytes": 2335,
+                "sha256": "69da8b7d9c0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+                "source_url": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Example.png",
+            },
+        }
+        result = MediaIngestResult.model_validate(example)
+        assert result.ingest_id == "8a9b0c1d-2e3f-4a5b-6c7d-8e9f0a1b2c3d"
+        assert result.target is not None
+        assert result.target.media_id == "1234567890123456"
+        assert result.resource is not None
         assert result.resource.size_bytes == 2335

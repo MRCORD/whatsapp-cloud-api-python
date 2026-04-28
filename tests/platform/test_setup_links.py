@@ -6,6 +6,7 @@ import respx
 from httpx import Response
 
 from kapso_whatsapp.platform import KapsoPlatformClient
+from kapso_whatsapp.platform.resources.setup_links import SetupLink
 
 CUSTOMER_ID = "3c90c3cc-0d44-4b50-8888-8dd25736052a"
 SETUP_LINK_ID = "7f8a9b1c-2d3e-4f5a-6b7c-8d9e0f1a2b3c"
@@ -192,3 +193,79 @@ class TestUpdate:
         body = route.calls.last.request.read().decode()
         assert "success_redirect_url" not in body
         assert "failure_redirect_url" not in body
+
+
+class TestDocExampleValidates:
+    """Regression tests: doc response examples must validate without error."""
+
+    def test_setup_link_create_doc_example_validates(self) -> None:
+        # Source: https://docs.kapso.ai/api/platform/v1/setup-links/create-setup-link
+        # Response 201 — note phone_number_area_code and whatsapp_setup_error are null,
+        # and provisioned_phone_number / language / scheduled_at are absent.
+        example = {
+            "id": "7f8a9b1c-2d3e-4f5a-6b7c-8d9e0f1a2b3c",
+            "status": "active",
+            "created_at": "2025-01-15T10:00:00Z",
+            "expires_at": "2025-02-14T10:00:00Z",
+            "url": "https://app.kapso.ai/whatsapp/setup/aBcD123xyz456def789",
+            "success_redirect_url": "https://yourapp.com/whatsapp/success",
+            "failure_redirect_url": "https://yourapp.com/whatsapp/failed",
+            "allowed_connection_types": ["coexistence", "dedicated"],
+            "provision_phone_number": False,
+            "phone_number_area_code": None,
+            "phone_number_country_isos": ["US"],
+            "theme_config": {
+                "primary_color": "#3b82f6",
+                "primary_foreground_color": "#ffffff",
+                "background_color": "#f9fafb",
+                "text_color": "#111827",
+                "border_color": "#d1d5db",
+            },
+            "whatsapp_setup_status": "pending",
+            "whatsapp_setup_error": None,
+        }
+        SetupLink.model_validate(example)
+
+    def test_setup_link_list_doc_example_validates(self) -> None:
+        # Source: https://docs.kapso.ai/api/platform/v1/setup-links/list-setup-links
+        # Response 200 — includes provisioned_phone_number with all sub-fields present.
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "status": "active",
+            "created_at": "2023-11-07T05:31:56Z",
+            "url": "https://app.kapso.ai/whatsapp/setup/abc",
+            "expires_at": "2023-11-07T05:31:56Z",
+            "success_redirect_url": "https://example.com/success",
+            "failure_redirect_url": "https://example.com/failed",
+            "allowed_connection_types": ["coexistence", "dedicated"],
+            "theme_config": {
+                "primary_color": "#3b82f6",
+                "primary_foreground_color": "#ffffff",
+                "background_color": "#f9fafb",
+                "text_color": "#111827",
+                "muted_text_color": "#6b7280",
+                "card_color": "#ffffff",
+                "muted_color": "#f3f4f6",
+                "border_color": "#d1d5db",
+                "secondary_color": "#f3f4f6",
+                "secondary_foreground_color": "#111827",
+                "destructive_color": "#ef4444",
+                "destructive_foreground_color": "#ffffff",
+            },
+            "provision_phone_number": True,
+            "phone_number_area_code": "415",
+            "phone_number_country_isos": ["US"],
+            "language": "en",
+            "whatsapp_setup_status": "pending",
+            "whatsapp_setup_error": None,
+            "provisioned_phone_number": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "phone_number": "+14155550123",
+                "status": "active",
+                "country_iso": "US",
+                "country_dial_code": "1",
+                "area_code": "415",
+                "display_number": "+1 (415) 555-0123",
+            },
+        }
+        SetupLink.model_validate(example)

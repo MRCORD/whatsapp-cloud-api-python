@@ -127,18 +127,25 @@ Added a sibling client `KapsoPlatformClient` for the Kapso Platform API (`api.ka
 ### 🔄 Pending / Future Work
 
 #### Quality
-- [ ] CI workflow running `examples/platform_smoke.py` nightly against a dedicated test project (catches Pydantic-vs-API drift like the three we fixed in v0.2.0)
-- [ ] Audit Pydantic strictness on all 18 Platform resources — sample real responses for each, mark fields optional / add `extra="allow"` where the API returns nulls or extra keys
-- [ ] Tag-triggered PyPI publish via GitHub Actions trusted publishing (currently the v0.2.0 tag is pushed but PyPI publish is manual)
-- [ ] Audit `server/flows.py` test coverage for encryption/decryption (AES-GCM-128 over Meta's flow data exchange)
+- [x] CI workflow running `examples/platform_smoke.py` nightly against a dedicated test project — `.github/workflows/platform-smoke.yml` (needs `KAPSO_API_TOKEN` repo secret)
+- [x] Audit Pydantic strictness on all 18 Platform resources — doc-example regression tests added across all 18 test files (53 new tests). All resource models proved already-permissive enough; no source changes needed beyond the 3 fixed during v0.2.0 smoke
+- [x] Tag-triggered PyPI publish via GitHub Actions trusted publishing — `.github/workflows/release.yml` (needs PyPI trusted publisher config + GitHub `pypi` environment)
+- [x] Audit `server/flows.py` test coverage — 17 new tests added in `tests/test_server_flows.py` (round-trip encrypt/decrypt, HMAC validation, tampering detection, metadata normalization, response builder, wire-case conversion). Uses AES-256-CBC + HMAC-SHA256 (truncated to 10 bytes) + PKCS7 padding (not AES-GCM as previously noted)
 
 #### TS SDK Parity
-- [ ] Template definition builder — verify the TS SDK actually has one before committing to it
+- [ ] Template definition builder — **confirmed real gap**. TS SDK exposes `buildTemplateDefinition` and `buildTemplatePayload` (see github.com/gokapso/whatsapp-cloud-api-js and docs.kapso.ai/docs/whatsapp/typescript-sdk/templates). Python equivalent missing.
 
 #### Documentation
-- [ ] Cookbook: `kp.database` patterns (idempotent upsert, schema migrations, query composition)
-- [ ] Cookbook: `kp.integrations` patterns (OAuth connect flow, action prop config, account discovery)
-- [ ] Deprecation policy doc — what counts as a breaking change vs a minor; how long shims live
+- [x] Cookbook: `kp.database` patterns — `docs/cookbook-database.md` (352 lines, 7 sections)
+- [x] Cookbook: `kp.integrations` patterns — `docs/cookbook-integrations.md` (551 lines)
+- [x] Deprecation policy doc — `docs/deprecation-policy.md` (232 lines)
+
+#### API gaps surfaced while writing the cookbooks (real follow-ups)
+- [ ] `IntegrationsResource.get(id)` — no method to fetch a single integration; every other resource has one
+- [ ] `platform-api.md` database section uses `where={}/set={}` keyword args — real API uses `**filters` kwargs and a positional `fields` dict for `update`. Doc needs correction
+- [ ] `platform-api.md` integrations section calls `list_accounts(app=...)` — real param is `app_slug=`
+- [ ] `platform-api.md` integrations section calls `get_connect_token(app=...)` — real method takes no args (token is project-scoped)
+- [ ] Docs use `id: 1` (integer) for `users` list response, but live API returns UUIDs — file an issue with the docs team or note discrepancy in `platform-api.md`
 
 #### Track-by-waiting (build only when demand surfaces)
 - [ ] Sync/blocking client wrapper — wait for 3+ user requests; ship via `from kapso_whatsapp.sync import …` adapter

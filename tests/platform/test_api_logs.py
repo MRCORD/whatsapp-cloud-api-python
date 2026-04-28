@@ -135,3 +135,25 @@ class TestIter:
         resource = ApiLogsResource(platform_client)
         ids = [entry.id async for entry in resource.iter(per_page=2)]
         assert ids == ["1", "2", "3"]
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from docs.kapso.ai/api/platform/v1/api-logs/list-api-logs
+    must remain parseable by ApiLog without modification."""
+
+    def test_api_log_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.api_logs import ApiLog
+
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "endpoint": "<string>",
+            "http_method": "<string>",
+            "response_status": 123,
+            "response_time_ms": 123,
+            "created_at": "2023-11-07T05:31:56Z",
+            "ip_address": "<string>",
+            "error_message": "<string>",
+            "api_key_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "api_key_name": "<string>",
+        }
+        ApiLog.model_validate(example)  # raises if model gets stricter than docs

@@ -6,6 +6,14 @@ import respx
 from httpx import Response
 
 from kapso_whatsapp.platform import KapsoPlatformClient
+from kapso_whatsapp.platform.resources.integrations import (
+    AvailableAction,
+    AvailableApp,
+    ConnectedAccount,
+    ConnectToken,
+    Integration,
+    IntegrationUser,
+)
 
 
 def _integration(**overrides: object) -> dict[str, object]:
@@ -448,3 +456,173 @@ class TestReloadActionProps:
         await platform_client.integrations.reload_action_props("my-action")
         body = route.calls.last.request.read().decode()
         assert body == "{}"
+
+
+class TestDocExampleValidates:
+    """Regression tests: each Pydantic model validates the exact JSON example
+    shown in the Kapso docs (docs.kapso.ai/api/platform/v1/integrations/*).
+    Failures here mean the live API changed its shape or the model drifted.
+    """
+
+    def test_integration_user_doc_example_validates(self) -> None:
+        # Embedded inside list-connected-accounts and list-integrations responses.
+        example = {
+            "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "email": "user@example.com",
+            "name": "John Doe",
+            "avatar_url": None,
+            "created_at": "2025-01-01T00:00:00Z",
+            "onboarding_status": "complete",
+        }
+        IntegrationUser.model_validate(example)
+
+    def test_connected_account_doc_example_validates(self) -> None:
+        # From: GET /integrations/accounts (list-connected-accounts)
+        example = {
+            "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "pipedream_account_id": "apn_abc123",
+            "app_slug": "slack",
+            "app_name": "Slack",
+            "account_name": "My Workspace",
+            "healthy": True,
+            "created_at": "2025-01-10T08:00:00Z",
+            "updated_at": "2025-01-10T08:00:00Z",
+            "user": {
+                "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                "email": "user@example.com",
+                "name": "John Doe",
+                "avatar_url": None,
+                "created_at": "2025-01-01T00:00:00Z",
+                "onboarding_status": "complete",
+            },
+            "project": None,
+        }
+        ConnectedAccount.model_validate(example)
+
+    def test_connected_account_project_dict_validates(self) -> None:
+        # create/update-integration docs show project as {} (non-null dict).
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "pipedream_account_id": "<string>",
+            "app_slug": "<string>",
+            "healthy": True,
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "app_name": "<string>",
+            "account_name": "<string>",
+            "user": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "email": "jsmith@example.com",
+                "name": "<string>",
+                "avatar_url": "<string>",
+                "created_at": "2023-11-07T05:31:56Z",
+                "onboarding_status": "<string>",
+            },
+            "project": {},
+        }
+        ConnectedAccount.model_validate(example)
+
+    def test_integration_list_doc_example_validates(self) -> None:
+        # From: GET /integrations (list-integrations) — full nested object.
+        example = {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "action_id": "slack-send-message",
+            "app_slug": "slack",
+            "app_name": "Slack",
+            "action_name": "Send Message",
+            "name": "Notify Sales Channel",
+            "enabled": True,
+            "configured_props": {"channel": "#sales"},
+            "variable_definitions": {},
+            "dynamic_props_id": None,
+            "created_at": "2025-01-15T10:00:00Z",
+            "updated_at": "2025-01-15T10:00:00Z",
+            "pipedream_account": {
+                "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                "pipedream_account_id": "apn_abc123",
+                "app_slug": "slack",
+                "app_name": "Slack",
+                "account_name": "My Workspace",
+                "healthy": True,
+                "created_at": "2025-01-10T08:00:00Z",
+                "updated_at": "2025-01-10T08:00:00Z",
+                "user": {
+                    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "email": "user@example.com",
+                    "name": "John Doe",
+                    "avatar_url": None,
+                    "created_at": "2025-01-01T00:00:00Z",
+                    "onboarding_status": "complete",
+                },
+                "project": None,
+            },
+        }
+        Integration.model_validate(example)
+
+    def test_integration_create_doc_example_validates(self) -> None:
+        # From: POST /integrations (create-integration) — dynamic_props_id is a
+        # non-null string and project is an empty dict in this variant.
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "action_id": "<string>",
+            "app_slug": "<string>",
+            "enabled": True,
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "app_name": "<string>",
+            "action_name": "<string>",
+            "name": "<string>",
+            "metadata": {},
+            "configured_props": {},
+            "variable_definitions": {},
+            "dynamic_props_id": "<string>",
+            "pipedream_account": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "pipedream_account_id": "<string>",
+                "app_slug": "<string>",
+                "healthy": True,
+                "created_at": "2023-11-07T05:31:56Z",
+                "updated_at": "2023-11-07T05:31:56Z",
+                "app_name": "<string>",
+                "account_name": "<string>",
+                "user": {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "email": "jsmith@example.com",
+                    "name": "<string>",
+                    "avatar_url": "<string>",
+                    "created_at": "2023-11-07T05:31:56Z",
+                    "onboarding_status": "<string>",
+                },
+                "project": {},
+            },
+        }
+        Integration.model_validate(example)
+
+    def test_available_app_doc_example_validates(self) -> None:
+        # From: GET /integrations/apps (list-available-apps)
+        example = {
+            "id": "<string>",
+            "name_slug": "<string>",
+            "name": "<string>",
+            "description": "<string>",
+            "img_src": "<string>",
+        }
+        AvailableApp.model_validate(example)
+
+    def test_available_action_doc_example_validates(self) -> None:
+        # From: GET /integrations/actions (list-available-actions)
+        example = {
+            "key": "<string>",
+            "name": "<string>",
+            "description": "<string>",
+            "version": "<string>",
+        }
+        AvailableAction.model_validate(example)
+
+    def test_connect_token_doc_example_validates(self) -> None:
+        # From: POST /integrations/connect_token (get-connect-token)
+        example = {
+            "token": "pd_ct_abc123xyz",
+            "expires_at": "2025-01-15T10:15:00Z",
+        }
+        ConnectToken.model_validate(example)

@@ -647,3 +647,141 @@ class TestGetFunctionInvocations:
         await platform_client.whatsapp_flows.get_function_invocations(FLOW_ID)
         params = dict(route.calls.last.request.url.params)
         assert "status" not in params
+
+
+# ---------------------------------------------------------------------------
+# Doc-example regression tests
+# Embedded verbatim from docs.kapso.ai/api/platform/v1/whatsapp-flows/*
+# Each method pins a real-shape response so future strictness changes are
+# caught immediately without re-scraping.
+# ---------------------------------------------------------------------------
+
+
+class TestDocExampleValidates:
+    """Validate every Pydantic model against the exact JSON shape in the docs."""
+
+    def test_whatsapp_flow_doc_example_validates(self) -> None:
+        # Source: list-flows and get-flow (200 response, single item)
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "meta_flow_id": "<string>",
+            "name": "<string>",
+            "status": "draft",
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "json_version": "<string>",
+            "data_api_version": "<string>",
+            "business_account_id": "<string>",
+            "preview_url": "<string>",
+            "published_at": "2023-11-07T05:31:56Z",
+            "last_synced_at": "2023-11-07T05:31:56Z",
+            "data_endpoint_function_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "phone_number_id": "<string>",
+            "data_endpoint_url": "<string>",
+            "has_data_endpoint": True,
+            "flows_encryption_configured": True,
+        }
+        WhatsAppFlow.model_validate(example)
+
+    def test_encryption_result_doc_example_validates(self) -> None:
+        # Source: setup-encryption (200 response)
+        example = {
+            "status": "success",
+            "message": "<string>",
+            "flows_encryption_configured": True,
+        }
+        EncryptionResult.model_validate(example)
+
+    def test_flow_version_list_doc_example_validates(self) -> None:
+        # Source: list-flow-versions (200 response, single item without flow_json)
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "version_label": "<string>",
+            "status": "draft",
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "flow_json_sha": "<string>",
+            "published_at": "2023-11-07T05:31:56Z",
+            "validation_errors": [{}],
+        }
+        FlowVersion.model_validate(example)
+
+    def test_flow_version_get_doc_example_validates(self) -> None:
+        # Source: get-flow-version and create-flow-version (200/201 response, with flow_json)
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "version_label": "<string>",
+            "status": "draft",
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "flow_json_sha": "<string>",
+            "published_at": "2023-11-07T05:31:56Z",
+            "validation_errors": [{}],
+            "flow_json": {},
+        }
+        FlowVersion.model_validate(example)
+
+    def test_data_endpoint_doc_example_validates(self) -> None:
+        # Source: get-data-endpoint, createupdate-data-endpoint, deploy-data-endpoint (200 response)
+        example = {
+            "function_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "function_name": "<string>",
+            "status": "draft",
+            "endpoint_url": "<string>",
+            "last_deployed_at": "2023-11-07T05:31:56Z",
+            "code": "<string>",
+        }
+        DataEndpoint.model_validate(example)
+
+    def test_registered_data_endpoint_doc_example_validates(self) -> None:
+        # Source: register-data-endpoint-with-meta (200 response)
+        example = {
+            "function_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "function_name": "<string>",
+            "status": "draft",
+            "endpoint_url": "<string>",
+            "last_deployed_at": "2023-11-07T05:31:56Z",
+            "code": "<string>",
+            "flow_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "flow_data_endpoint_function_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "flow_has_encryption": True,
+        }
+        RegisteredDataEndpoint.model_validate(example)
+
+    def test_function_logs_doc_example_validates(self) -> None:
+        # Source: get-function-logs (200 response)
+        example = {
+            "function_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "function_name": "<string>",
+            "logs": [
+                {
+                    "level": "<string>",
+                    "message": "<string>",
+                    "logged_at": "2023-11-07T05:31:56Z",
+                    "stack": "<string>",
+                    "cf_ray": "<string>",
+                    "outcome": "<string>",
+                }
+            ],
+        }
+        FunctionLogs.model_validate(example)
+
+    def test_function_invocations_doc_example_validates(self) -> None:
+        # Source: get-function-invocations (200 response)
+        example = {
+            "function_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "function_name": "<string>",
+            "invocations": [
+                {
+                    "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                    "status_code": 123,
+                    "duration_ms": 123,
+                    "request_body": {},
+                    "response_body": {},
+                    "error_message": "<string>",
+                    "cf_ray": "<string>",
+                    "created_at": "2023-11-07T05:31:56Z",
+                }
+            ],
+        }
+        FunctionInvocations.model_validate(example)

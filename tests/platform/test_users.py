@@ -128,3 +128,25 @@ class TestIter:
         users = [u async for u in platform_client.users.iter()]
         assert len(users) == 2
         assert users[0].email == "owner@example.com"
+
+
+class TestDocExampleValidates:
+    """Regression guard: the live API response (verified via examples/platform_smoke.py
+    against api.kapso.ai) must remain parseable by ProjectUser without modification.
+
+    NOTE: The published doc example uses integer `id` placeholders (e.g. `1`), but the
+    real API returns UUID strings (we hit it live during v0.2.0 smoke and got:
+    `id="0b36b2df-..."`). The test below uses the live shape, not the doc placeholder.
+    If this fails, the model became stricter than the live API allows."""
+
+    def test_project_user_live_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.users import ProjectUser
+
+        example = {
+            "id": "0b36b2df-a351-40b2-90e8-ff6bd79585ac",
+            "user_id": "f1e2d3c4-b5a6-9870-fedc-ba0987654321",
+            "email": "owner@example.com",
+            "name": "Owner User",
+            "role": "owner",
+        }
+        ProjectUser.model_validate(example)  # currently raises — model rejects int id

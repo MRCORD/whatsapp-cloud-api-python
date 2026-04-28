@@ -140,3 +140,30 @@ class TestIter:
         resource = WebhookDeliveriesResource(platform_client)
         ids = [d.id async for d in resource.iter(per_page=2)]
         assert ids == ["1", "2", "3"]
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from
+    docs.kapso.ai/api/platform/v1/webhook-deliveries/list-webhook-deliveries
+    must remain parseable by WebhookDelivery without modification."""
+
+    def test_webhook_delivery_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.webhook_deliveries import WebhookDelivery
+
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "event": "<string>",
+            "status": "pending",
+            "attempt_count": 123,
+            "created_at": "2023-11-07T05:31:56Z",
+            "response_status": 123,
+            "delivered_at": "2023-11-07T05:31:56Z",
+            "failed_at": "2023-11-07T05:31:56Z",
+            "last_attempt_at": "2023-11-07T05:31:56Z",
+            "webhook_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "webhook_url": "<string>",
+            "whatsapp_config_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "phone_number_id": "<string>",
+            "conversation_phone_number": "<string>",
+        }
+        WebhookDelivery.model_validate(example)  # raises if model gets stricter than docs

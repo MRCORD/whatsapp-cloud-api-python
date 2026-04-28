@@ -109,3 +109,17 @@ class TestList:
         results = await platform_client.provider_models.list()
         assert len(results) == 1
         assert isinstance(results[0], ProviderModel)
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from
+    docs.kapso.ai/api/platform/v1/provider-models/list-provider-models
+    must remain parseable by ProviderModel without modification."""
+
+    def test_provider_model_doc_example_validates(self) -> None:
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "name": "<string>",
+            "provider": "<string>",
+        }
+        ProviderModel.model_validate(example)  # raises if model gets stricter than docs

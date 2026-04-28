@@ -187,3 +187,26 @@ class TestUpdate:
         assert '"profile_name":"Johnny Doe"' in body
         assert "display_name" not in body
         assert "customer_id" not in body
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from docs.kapso.ai/api/platform/v1/contacts/get-contact
+    must remain parseable by Contact without modification."""
+
+    def test_contact_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.contacts import Contact
+
+        example = {
+            "id": "123e4567-e89b-12d3-a456-426614174000",
+            "wa_id": "15551234567",
+            "business_scoped_user_id": "US.13491208655302741918",
+            "parent_business_scoped_user_id": "US.ENT.506847293015824",
+            "username": "@testusername",
+            "profile_name": "John Doe",
+            "display_name": "John (VIP)",
+            "customer_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "metadata": {},
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+        }
+        Contact.model_validate(example)  # raises if model gets stricter than docs

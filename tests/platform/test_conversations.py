@@ -253,3 +253,46 @@ class TestUpdateAssignment:
         assert result.active is False
         body = route.calls.last.request.read().decode()
         assert '"active":false' in body
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc examples from docs.kapso.ai/api/platform/v1/conversations/*
+    must remain parseable by Conversation and ConversationAssignment without modification."""
+
+    def test_conversation_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.conversations import Conversation
+
+        example = {
+            "id": "c63ced48-1283-4d55-8c8d-930f525aa0e5",
+            "phone_number": "14155550123",
+            "status": "active",
+            "last_active_at": "2025-07-16T09:45:00Z",
+            "created_at": "2025-06-01T12:00:00Z",
+            "updated_at": "2025-07-16T09:45:00Z",
+            "metadata": {},
+            "phone_number_id": "1234567890",
+            "kapso": {
+                "contact_name": "Alicia",
+                "messages_count": 42,
+                "last_message_id": "wamid.HBgMMTIzNDU2",
+                "last_message_type": "text",
+                "last_message_timestamp": "2025-07-16T09:40:00Z",
+                "last_message_text": "Thanks!",
+                "last_inbound_at": "2025-07-16T09:35:10Z",
+                "last_outbound_at": "2025-07-16T09:40:00Z",
+            },
+        }
+        Conversation.model_validate(example)  # raises if model gets stricter than docs
+
+    def test_conversation_assignment_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.conversations import ConversationAssignment
+
+        example = {
+            "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "user_id": "f1e2d3c4-b5a6-9870-fedc-ba0987654321",
+            "created_by_user_id": "f1e2d3c4-b5a6-9870-fedc-ba0987654321",
+            "notes": "Handling customer inquiry",
+            "active": True,
+            "created_at": "2026-01-19T10:30:00Z",
+        }
+        ConversationAssignment.model_validate(example)  # raises if model gets stricter than docs

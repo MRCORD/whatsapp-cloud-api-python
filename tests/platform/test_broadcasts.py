@@ -11,6 +11,7 @@ from kapso_whatsapp.platform.resources.broadcasts import (
     Broadcast,
     BroadcastActionResult,
     BroadcastRecipient,
+    WhatsAppTemplate,
 )
 
 # ---------------------------------------------------------------------------
@@ -509,3 +510,119 @@ class TestCancel:
         assert isinstance(result, BroadcastActionResult)
         assert result.status == "draft"
         assert result.scheduled_at is None
+
+
+class TestDocExampleValidates:
+    """Regression tests: doc response examples must validate without error."""
+
+    def test_broadcast_create_doc_example_validates(self) -> None:
+        # Source: https://docs.kapso.ai/api/platform/v1/broadcasts/create-broadcast
+        # Response 201 — started_at and completed_at are null; response_rate is int 0.
+        example = {
+            "id": "5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c",
+            "name": "Weekend Sale 2025",
+            "status": "draft",
+            "started_at": None,
+            "completed_at": None,
+            "created_at": "2025-07-14T15:00:00Z",
+            "updated_at": "2025-07-14T15:00:00Z",
+            "phone_number_id": "1234567890",
+            "whatsapp_template": {
+                "id": "784203120908608",
+                "meta_template_id": "784203120908608",
+                "name": "weekend_sale_2025",
+                "language_code": "en_US",
+                "category": "MARKETING",
+                "status": "approved",
+                "components": [
+                    {
+                        "type": "BODY",
+                        "text": "Hi {{name}}! Get {{discount}}% off this weekend only!",
+                        "example": {
+                            "body_text_named_params": [
+                                {"param_name": "name", "example": "John"},
+                                {"param_name": "discount", "example": "25"},
+                            ]
+                        },
+                    }
+                ],
+            },
+            "total_recipients": 0,
+            "sent_count": 0,
+            "failed_count": 0,
+            "delivered_count": 0,
+            "read_count": 0,
+            "responded_count": 0,
+            "pending_count": 0,
+            "response_rate": 0,
+        }
+        Broadcast.model_validate(example)
+
+    def test_broadcast_list_sending_doc_example_validates(self) -> None:
+        # Source: https://docs.kapso.ai/api/platform/v1/broadcasts/list-broadcasts
+        # Response 200 — completed_at is null, response_rate is int 6.
+        example = {
+            "id": "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+            "name": "Product Launch Q3",
+            "status": "sending",
+            "started_at": "2025-07-16T09:00:00Z",
+            "completed_at": None,
+            "created_at": "2025-07-16T08:00:00Z",
+            "updated_at": "2025-07-16T09:15:00Z",
+            "phone_number_id": "0987654321",
+            "whatsapp_template": {
+                "id": "891234567890123",
+                "meta_template_id": "891234567890123",
+                "name": "product_launch_q3",
+                "language_code": "en_US",
+                "category": "MARKETING",
+                "status": "approved",
+                "components": [
+                    {
+                        "type": "BODY",
+                        "text": "New product alert! Check out our Q3 launch.",
+                    }
+                ],
+            },
+            "total_recipients": 500,
+            "sent_count": 250,
+            "failed_count": 10,
+            "delivered_count": 240,
+            "read_count": 100,
+            "responded_count": 15,
+            "pending_count": 240,
+            "response_rate": 6,
+        }
+        Broadcast.model_validate(example)
+
+    def test_add_recipients_doc_example_validates(self) -> None:
+        # Source: https://docs.kapso.ai/api/platform/v1/broadcasts/add-recipients
+        # Response 201 — errors list is non-empty.
+        example = {
+            "added": 495,
+            "duplicates": 5,
+            "errors": [
+                "Recipient 3: template parameters invalid - requires 2 parameters but got 1",
+                "Recipient 7: invalid phone number format",
+            ],
+        }
+        AddRecipientsResult.model_validate(example)
+
+    def test_whatsapp_template_extra_fields_allowed(self) -> None:
+        # The doc example shows 'example' nested inside a component, which is
+        # an extra field relative to the base text/type structure; ConfigDict(extra='allow')
+        # must absorb it without raising.
+        example = {
+            "id": "784203120908608",
+            "name": "weekend_sale",
+            "components": [
+                {
+                    "type": "BODY",
+                    "text": "Hello {{name}}",
+                    "example": {
+                        "body_text_named_params": [{"param_name": "name", "example": "World"}]
+                    },
+                }
+            ],
+        }
+        WhatsAppTemplate.model_validate(example)

@@ -229,3 +229,33 @@ class TestTest:
         await resource.test("abc")
         body = route.calls.last.request.read().decode()
         assert "event_type" not in body
+
+
+class TestDocExampleValidates:
+    """Regression guard: doc example from
+    docs.kapso.ai/api/platform/v1/webhooks/get-project-webhook
+    must remain parseable by ProjectWebhook without modification."""
+
+    def test_project_webhook_doc_example_validates(self) -> None:
+        from kapso_whatsapp.platform.resources.project_webhooks import ProjectWebhook
+
+        example = {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "url": "<string>",
+            "kind": "kapso",
+            "events": ["<string>"],
+            "active": True,
+            "created_at": "2023-11-07T05:31:56Z",
+            "updated_at": "2023-11-07T05:31:56Z",
+            "project_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "phone_number_id": "<string>",
+            "secret_key": "<string>",
+            "headers": {},
+            "buffer_enabled": True,
+            "buffer_window_seconds": 123,
+            "max_buffer_size": 123,
+            "buffer_events": ["<string>"],
+            "inactivity_minutes": 123,
+            "payload_version": "<string>",
+        }
+        ProjectWebhook.model_validate(example)  # raises if model gets stricter than docs
