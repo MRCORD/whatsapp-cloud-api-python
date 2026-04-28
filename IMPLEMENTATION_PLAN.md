@@ -140,12 +140,11 @@ Added a sibling client `KapsoPlatformClient` for the Kapso Platform API (`api.ka
 - [x] Cookbook: `kp.integrations` patterns — `docs/cookbook-integrations.md` (551 lines)
 - [x] Deprecation policy doc — `docs/deprecation-policy.md` (232 lines)
 
-#### API gaps surfaced while writing the cookbooks (real follow-ups)
-- [ ] `IntegrationsResource.get(id)` — no method to fetch a single integration; every other resource has one
-- [ ] `platform-api.md` database section uses `where={}/set={}` keyword args — real API uses `**filters` kwargs and a positional `fields` dict for `update`. Doc needs correction
-- [ ] `platform-api.md` integrations section calls `list_accounts(app=...)` — real param is `app_slug=`
-- [ ] `platform-api.md` integrations section calls `get_connect_token(app=...)` — real method takes no args (token is project-scoped)
-- [ ] Docs use `id: 1` (integer) for `users` list response, but live API returns UUIDs — file an issue with the docs team or note discrepancy in `platform-api.md`
+#### API gaps surfaced while writing the cookbooks
+- [x] `platform-api.md` database section corrected — now uses real `**filters` kwargs and positional `fields` dict for `update`
+- [x] `platform-api.md` integrations section corrected — `list_accounts(app_slug=…)`, `get_connect_token()` with no args, `create()` with `action_id`/`app_slug`, `get_action_schema()` with positional action_id, etc.
+- [x] `platform-api.md` users section now documents the `id`-as-integer-vs-UUID doc/live discrepancy
+- [x] `IntegrationsResource.get(id)` — investigated; the underlying API has no `GET /integrations/{id}` endpoint (only list/create/update/delete). Documented the workaround (filter from `list()`) in `platform-api.md`. Not adding a client-side helper unless someone asks for it
 
 #### Track-by-waiting (build only when demand surfaces)
 - [ ] Sync/blocking client wrapper — wait for 3+ user requests; ship via `from kapso_whatsapp.sync import …` adapter

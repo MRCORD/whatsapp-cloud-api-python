@@ -279,6 +279,8 @@ async for u in kp.users.iter():
     print(u.email, u.role)
 ```
 
+> Note: the published doc shows `id` as an integer placeholder (`1`), but the live API returns UUID strings. The SDK's `ProjectUser.id` is typed `str` to match the live shape.
+
 ### Broadcasts
 
 Bulk messaging campaigns.
@@ -460,67 +462,79 @@ for m in models:
 The Kapso-managed database for storing application state.
 
 ```python
-# Query rows with filters
+# Query rows with PostgREST-style filters (status="eq.qualified", etc.)
 rows = await kp.database.query(
-    table="leads",
-    where={"status": "qualified"},
-    order_by="created_at desc",
+    "leads",
+    select="id,name,status",
+    order="created_at.desc",
     limit=100,
+    status="eq.qualified",
 )
 
 # Get a single row by primary key
-row = await kp.database.get(table="leads", id="lead-123")
+row = await kp.database.get("leads", "lead-123")
 
-# Insert
-await kp.database.insert(table="leads", rows=[{"name": "Alice", "status": "new"}])
+# Insert one or many
+await kp.database.insert("leads", [{"name": "Alice", "status": "new"}])
 
-# Upsert (insert or update on conflict)
+# Upsert (PUT semantics; conflict resolution is on the table's primary key,
+# no caller-controlled on_conflict column)
 await kp.database.upsert(
-    table="leads",
-    rows=[{"id": "lead-123", "status": "qualified"}],
-    on_conflict="id",
+    "leads",
+    [{"id": "lead-123", "status": "qualified"}],
 )
 
-# Update
+# Update — `fields` is a positional dict; filters are kwargs
 await kp.database.update(
-    table="leads",
-    where={"status": "new"},
-    set={"status": "contacted"},
+    "leads",
+    {"status": "contacted"},
+    status="eq.new",
 )
 
-# Delete
-await kp.database.delete(table="leads", where={"status": "spam"})
+# Delete with filters
+await kp.database.delete("leads", status="eq.spam")
 ```
+
+> See [`docs/cookbook-database.md`](./cookbook-database.md) for in-depth patterns: idempotent upsert, schema-light migrations, query composition, pagination, and error handling.
 
 ### Integrations
 
 Third-party integrations (Stripe, HubSpot, Slack, etc.) connected via Pipedream.
 
 ```python
-# Discover what's available
-apps = await kp.integrations.list_apps()
-actions = await kp.integrations.list_actions(app="stripe")
+# Discover what's available — search the Pipedream app catalog
+apps = await kp.integrations.list_apps(query="stripe", has_actions=True)
+actions = await kp.integrations.list_actions(app_slug="stripe")
 
-# CRUD on configured integrations in your project
+# CRUD on saved integrations in your project
 integrations = await kp.integrations.list()
-intg = await kp.integrations.create(app="stripe", name="Production Stripe")
+intg = await kp.integrations.create(
+    action_id="stripe-create-customer",
+    app_slug="stripe",
+    name="Production Stripe",
+)
 intg = await kp.integrations.update("uuid-…", name="Stripe Live")
 await kp.integrations.delete("uuid-…")
 
-# Connected accounts (OAuth-linked third-party accounts)
-accounts = await kp.integrations.list_accounts(app="stripe")
-token = await kp.integrations.get_connect_token(app="stripe")
-# token.url is what you redirect users to for OAuth
+# OAuth-linked accounts (the user's authorized Stripe/HubSpot/etc. accounts)
+accounts = await kp.integrations.list_accounts(app_slug="stripe")
+# get_connect_token() takes no args — token is project-scoped, not app-scoped
+token = await kp.integrations.get_connect_token()
+# Redirect the user to a Pipedream Connect URL built with token.token
 
-# Action introspection
-schema = await kp.integrations.get_action_schema(action_id="stripe.create_customer")
+# Action introspection — the action_id is positional
+schema = await kp.integrations.get_action_schema("stripe-create-customer")
 await kp.integrations.configure_action_prop(
-    action_id="stripe.create_customer",
+    "stripe-create-customer",
     prop_name="customer",
-    config={"email": "{{event.from}}"},
+    configured_props={"email": "{{event.from}}"},
 )
-await kp.integrations.reload_action_props(action_id="stripe.create_customer")
+await kp.integrations.reload_action_props("stripe-create-customer")
 ```
+
+> See [`docs/cookbook-integrations.md`](./cookbook-integrations.md) for in-depth patterns: OAuth connect-token flow, app/action discovery, action prop configuration.
+
+> Note: there is no `kp.integrations.get(integration_id)` method to fetch a single saved integration by ID. To find one by ID, fetch the list and filter — or [open an issue](https://github.com/MRCORD/whatsapp-cloud-api-python/issues) if you need it.
 
 ### WhatsApp Flows
 
