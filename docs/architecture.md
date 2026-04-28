@@ -18,51 +18,63 @@ System architecture, design decisions, and diagrams for the Kapso WhatsApp Cloud
 
 ## Overview
 
-The SDK provides a clean, async-first interface to the WhatsApp Business Cloud API with optional Kapso proxy support.
+The SDK ships **two clients** that share an internal HTTP transport:
+
+- **`WhatsAppClient`** — sends/receives WhatsApp messages via Meta Graph or the Kapso Meta-proxy (`graph.facebook.com` / `api.kapso.ai/meta/whatsapp`). URL shape: `{base}/{graph_version}/{path}`. Auth: Bearer token or `X-API-Key`.
+- **`KapsoPlatformClient`** — manages the Kapso project itself (customers, broadcasts, webhooks, database, integrations, WhatsApp Flow lifecycle, …) at `api.kapso.ai/platform/v1`. URL shape: `{base}/{path}` (version baked into base). Auth: `X-API-Key` only. Response envelope: `{"data": ..., "meta": {...}}`.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Your Application                                │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         kapso-whatsapp-cloud-api                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                          WhatsAppClient                              │   │
-│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────────────┐ │   │
-│  │  │  Config   │  │  httpx    │  │  Retry    │  │  Error Handling   │ │   │
-│  │  │(Pydantic) │  │  Client   │  │  Logic    │  │  & Categorization │ │   │
-│  │  └───────────┘  └───────────┘  └───────────┘  └───────────────────┘ │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                      │                                      │
-│  ┌───────────────────────────────────┴───────────────────────────────────┐ │
-│  │                            Resources                                   │ │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │ │
-│  │  │ Messages │ │  Media   │ │Templates │ │  Flows   │ │PhoneNumbers  │ │ │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │ │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐                               │ │
-│  │  │Conversa- │ │ Contacts │ │  Calls   │  (Kapso Proxy Only)          │ │
-│  │  │tions     │ │          │ │          │                               │ │
-│  │  └──────────┘ └──────────┘ └──────────┘                               │ │
-│  └───────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-│  ┌─────────────────────────────┐  ┌─────────────────────────────────────┐  │
-│  │         Webhooks            │  │         Server (Flows)              │  │
-│  │  ┌───────────┐ ┌─────────┐  │  │  ┌───────────┐ ┌─────────────────┐  │  │
-│  │  │  Verify   │ │Normalize│  │  │  │  Receive  │ │    Respond      │  │  │
-│  │  └───────────┘ └─────────┘  │  │  │  (Decrypt)│ │    (Encrypt)    │  │  │
-│  └─────────────────────────────┘  │  └───────────┘ └─────────────────┘  │  │
-│                                   └─────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                          ┌───────────┴───────────┐
-                          ▼                       ▼
-              ┌─────────────────────┐   ┌─────────────────────┐
-              │   Meta Graph API    │   │    Kapso Proxy      │
-              │ graph.facebook.com  │   │    api.kapso.ai     │
-              └─────────────────────┘   └─────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              Your Application                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+                  │                                          │
+                  ▼                                          ▼
+┌──────────────────────────────┐       ┌──────────────────────────────────────┐
+│       WhatsAppClient         │       │        KapsoPlatformClient           │
+│  Messaging via Meta / Kapso  │       │   Project mgmt via api.kapso.ai      │
+│  ┌────────────────────────┐  │       │  ┌────────────────────────────────┐  │
+│  │ Resources              │  │       │  │ 18 Resources                   │  │
+│  │  messages, media,      │  │       │  │  customers, setup_links,       │  │
+│  │  templates, flows,     │  │       │  │  phone_numbers, display_names, │  │
+│  │  phone_numbers,        │  │       │  │  users, broadcasts, messages,  │  │
+│  │  conversations,        │  │       │  │  conversations, contacts,      │  │
+│  │  contacts, calls       │  │       │  │  media, project_webhooks,      │  │
+│  │  (Kapso proxy only)    │  │       │  │  webhooks, webhook_deliveries, │  │
+│  │                        │  │       │  │  api_logs, provider_models,    │  │
+│  │                        │  │       │  │  database, integrations,       │  │
+│  │                        │  │       │  │  whatsapp_flows                │  │
+│  └────────────────────────┘  │       │  └────────────────────────────────┘  │
+│  ┌────────────────────────┐  │       │  ┌────────────────────────────────┐  │
+│  │ Webhooks (verify +     │  │       │  │ Pagination helper              │  │
+│  │ normalize)             │  │       │  │ (paginate(), iter())           │  │
+│  └────────────────────────┘  │       │  └────────────────────────────────┘  │
+│  ┌────────────────────────┐  │       │  ┌────────────────────────────────┐  │
+│  │ Server-side flows      │  │       │  │ Envelope unwrapping            │  │
+│  │ (decrypt/respond)      │  │       │  │ (request() / request_raw())    │  │
+│  └────────────────────────┘  │       │  └────────────────────────────────┘  │
+└──────────────┬───────────────┘       └─────────────────┬────────────────────┘
+               │                                         │
+               └────────────────┬────────────────────────┘
+                                ▼
+              ┌──────────────────────────────────────┐
+              │   _HttpCore (private, shared)        │
+              │   • httpx connection pool            │
+              │   • retry-with-backoff               │
+              │   • Retry-After honoring             │
+              │   • error categorization             │
+              └──────────────────────────────────────┘
+                                │
+              ┌─────────────────┼─────────────────────┐
+              ▼                 ▼                     ▼
+   ┌──────────────────┐  ┌────────────────┐  ┌──────────────────────┐
+   │ Meta Graph API   │  │  Kapso Meta-   │  │  Kapso Platform API  │
+   │graph.facebook.com│  │  proxy         │  │  api.kapso.ai/       │
+   │                  │  │  api.kapso.ai/ │  │  platform/v1         │
+   │                  │  │  meta/whatsapp │  │                      │
+   └──────────────────┘  └────────────────┘  └──────────────────────┘
 ```
+
+The HTTP core is private (`_http.py`). Each client builds its own URLs and handles its own response shape, but they share retry logic, auth header injection, error mapping, and connection pooling. Improvements to the transport land once and benefit both clients.
 
 ---
 
@@ -70,32 +82,58 @@ The SDK provides a clean, async-first interface to the WhatsApp Business Cloud A
 
 ```
 src/kapso_whatsapp/
-├── __init__.py           # Package exports and version
-├── client.py             # WhatsAppClient class
-├── exceptions.py         # Error hierarchy and categorization
-├── types.py              # Pydantic models (100+ types)
+├── __init__.py           # Package exports — both clients, version
+├── _http.py              # Private: shared httpx pool, retry, error mapping
+├── client.py             # WhatsAppClient (delegates transport to _HttpCore)
+├── exceptions.py         # Error hierarchy and categorization (shared)
+├── types.py              # Pydantic models for messaging surface
 ├── kapso.py              # Kapso field helpers
 │
-├── resources/            # API resource modules
+├── resources/            # WhatsAppClient resource modules
 │   ├── __init__.py
-│   ├── base.py           # BaseResource class
-│   ├── messages.py       # MessagesResource
-│   ├── media.py          # MediaResource
-│   ├── templates.py      # TemplatesResource
-│   ├── flows.py          # FlowsResource
-│   ├── phone_numbers.py  # PhoneNumbersResource
-│   ├── conversations.py  # ConversationsResource (Kapso)
-│   ├── contacts.py       # ContactsResource (Kapso)
-│   └── calls.py          # CallsResource (Kapso)
+│   ├── base.py           # BaseResource
+│   ├── messages.py       # send/read messages
+│   ├── media.py          # upload/download media
+│   ├── templates.py      # template management
+│   ├── flows.py          # WhatsApp Flow management (messaging side)
+│   ├── phone_numbers.py  # phone number config
+│   ├── conversations.py  # conversation listing (Kapso proxy)
+│   ├── contacts.py       # contact CRUD (Kapso proxy)
+│   └── calls.py          # call logs (Kapso proxy)
 │
-├── webhooks/             # Webhook handling
+├── platform/             # KapsoPlatformClient — Kapso project management
 │   ├── __init__.py
-│   ├── verify.py         # Signature verification
-│   └── normalize.py      # Payload normalization
+│   ├── client.py         # KapsoPlatformClient (delegates to _HttpCore)
+│   ├── types.py          # PlatformMeta, PaginatedResponse, Customer
+│   └── resources/        # 18 resource modules, each with its own Pydantic models
+│       ├── base.py       # PlatformBaseResource
+│       ├── customers.py
+│       ├── setup_links.py
+│       ├── phone_numbers.py
+│       ├── display_names.py
+│       ├── users.py
+│       ├── broadcasts.py
+│       ├── messages.py
+│       ├── conversations.py
+│       ├── contacts.py
+│       ├── media.py
+│       ├── project_webhooks.py
+│       ├── webhooks.py
+│       ├── webhook_deliveries.py
+│       ├── api_logs.py
+│       ├── provider_models.py
+│       ├── database.py
+│       ├── integrations.py
+│       └── whatsapp_flows.py
+│
+├── webhooks/             # Webhook handling (messaging side)
+│   ├── __init__.py
+│   ├── verify.py         # HMAC-SHA256 signature verification
+│   └── normalize.py      # Payload normalization with direction inference
 │
 └── server/               # Server-side features
     ├── __init__.py
-    └── flows.py          # Flow data exchange
+    └── flows.py          # Flow data exchange (encrypted payload handling)
 ```
 
 ---

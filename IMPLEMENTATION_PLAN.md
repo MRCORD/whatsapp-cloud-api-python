@@ -75,27 +75,80 @@ src/kapso_whatsapp/
 - [x] Type validation tests
 - [x] Kapso helper tests
 
+### ✅ v0.2.0 — Kapso Platform API (April 2026)
+
+Added a sibling client `KapsoPlatformClient` for the Kapso Platform API (`api.kapso.ai/platform/v1`), separate from messaging via `WhatsAppClient`.
+
+#### Transport Refactor
+- [x] Extract shared HTTP transport into private `_HttpCore` (httpx pool, retry-with-backoff, error categorization). Both clients delegate to it. `WhatsAppClient` public surface unchanged.
+
+#### KapsoPlatformClient Foundation
+- [x] Flat URL construction `{base}/{path}` (version baked into base URL)
+- [x] `X-API-Key` auth header injection
+- [x] `request()` / `request_raw()` for unwrapped vs full envelope
+- [x] `paginate()` async generator handling `meta.page` and `meta.current_page` quirks
+- [x] Lazy-loaded resource properties (18 of them)
+
+#### Platform Resources (~87 endpoints)
+- [x] customers (CRUD + iter)
+- [x] setup_links (3 endpoints)
+- [x] phone_numbers (6 endpoints incl. health check)
+- [x] display_names (3 endpoints, phone-number-scoped)
+- [x] users (1 endpoint)
+- [x] broadcasts (8 endpoints incl. recipients/send/schedule/cancel)
+- [x] messages (2 endpoints, list + get)
+- [x] conversations (7 endpoints incl. assignments)
+- [x] contacts (5 endpoints)
+- [x] media (1 endpoint, upload)
+- [x] project_webhooks (6 endpoints incl. test)
+- [x] webhooks (5 endpoints, phone-number-scoped)
+- [x] webhook_deliveries (1 endpoint)
+- [x] api_logs (1 endpoint)
+- [x] provider_models (1 endpoint, non-paginated)
+- [x] database (6 endpoints: query/insert/upsert/update/delete/get)
+- [x] integrations (11 endpoints incl. apps, actions, accounts)
+- [x] whatsapp_flows (14 endpoints: flows + versions + data endpoint + function observability)
+
+#### Quality
+- [x] 208 new tests (265 total, all passing)
+- [x] 18/18 resources verified live against `api.kapso.ai/platform/v1`
+- [x] mypy clean across 44 source files
+- [x] ruff clean across `src/` and `tests/`
+- [x] Pydantic models bug-fixed against real responses (User, ProjectWebhook, Webhook)
+
+#### Documentation
+- [x] `docs/platform-api.md` — comprehensive Platform reference
+- [x] `docs/architecture.md` — updated for two-client topology + `_HttpCore`
+- [x] `docs/examples.md` — added Platform examples section
+- [x] `docs/api-reference.md` — link to Platform reference
+- [x] `README.md` — Platform quickstart + resource table
+- [x] `CHANGELOG.md` — v0.2.0 entry
+
 ### 🔄 Pending / Future Work
 
-#### Phase 2: Enhanced Testing
-- [ ] Integration tests with mocked API
+#### Enhanced Testing
+- [ ] Integration tests with real API key (currently smoke script only)
 - [ ] End-to-end message flow tests
 - [ ] Template rendering tests
 - [ ] Flow encryption/decryption tests
 - [ ] Error handling edge cases
 
-#### Phase 3: Additional Features
+#### Additional Features
 - [ ] Template definition builder (TypeScript SDK parity)
 - [ ] Message payload builders with validation
-- [ ] Retry policy customization
+- [ ] Retry policy customization (per-resource overrides)
 - [ ] Request/response interceptors
 - [ ] Logging configuration
+- [ ] Sync/blocking client wrapper (currently async-only)
 
-#### Phase 4: Documentation
-- [ ] API reference documentation
-- [ ] Usage examples per resource
+#### Documentation
 - [ ] Migration guide from flowers-backend
 - [ ] Framework integration guides (FastAPI, Django)
+- [ ] Per-resource usage cookbooks for Platform endpoints (database, integrations)
+
+#### Possible 1.0
+- [ ] Package rename `kapso_whatsapp` → `kapso` with deprecation shim
+- [ ] Stabilize Platform API surface (some resources may grow methods)
 
 ## Key Design Decisions
 

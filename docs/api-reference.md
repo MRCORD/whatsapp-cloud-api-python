@@ -2,6 +2,11 @@
 
 Complete API documentation for the Kapso WhatsApp Cloud API Python SDK.
 
+The SDK ships **two clients**:
+
+- **`WhatsAppClient`** — sends/receives WhatsApp messages via Meta Graph or Kapso's Meta-proxy. Documented below.
+- **`KapsoPlatformClient`** — manages your Kapso project (customers, setup links, broadcasts, webhooks, database, integrations, WhatsApp Flow lifecycle). See [`platform-api.md`](./platform-api.md) for the full Platform API reference.
+
 ## Table of Contents
 
 - [WhatsAppClient](#whatsappclient)
@@ -17,6 +22,7 @@ Complete API documentation for the Kapso WhatsApp Cloud API Python SDK.
 - [Server-Side Flow Handling](#server-side-flow-handling)
 - [Types](#types)
 - [Exceptions](#exceptions)
+- **[Platform API → `platform-api.md`](./platform-api.md)** — `KapsoPlatformClient`, 18 resources, ~87 endpoints
 
 ---
 

@@ -892,3 +892,193 @@ class NotificationService:
         """Queue a notification for background sending."""
         await self.queue.put((to, message))
 ```
+
+---
+
+## Kapso Platform API Examples
+
+The following examples use `KapsoPlatformClient` to manage your Kapso project. See [`platform-api.md`](./platform-api.md) for the full reference.
+
+### Onboard a Customer End-to-End
+
+```python
+import asyncio
+from kapso_whatsapp import KapsoPlatformClient
+
+async def onboard_customer(api_key: str, name: str, external_id: str) -> str:
+    """Create a customer record and return a setup link URL."""
+    async with KapsoPlatformClient(api_key=api_key) as kp:
+        customer = await kp.customers.create(
+            name=name,
+            external_customer_id=external_id,
+        )
+        link = await kp.setup_links.create(
+            customer_id=customer.id,
+            success_redirect_url="https://yourapp.com/onboard/done",
+            failure_redirect_url="https://yourapp.com/onboard/error",
+            language="en",
+        )
+        return link.url
+
+# Send the returned URL to your customer; they connect their WhatsApp number.
+url = asyncio.run(onboard_customer("kp_live_…", "Acme Corp", "cus_acme_001"))
+```
+
+### Sync Customers from Your CRM
+
+```python
+async def sync_from_crm(api_key: str, crm_customers: list[dict]):
+    """Idempotently upsert your CRM customers into Kapso."""
+    async with KapsoPlatformClient(api_key=api_key) as kp:
+        # Index existing Kapso customers by external_customer_id
+        existing = {}
+        async for c in kp.customers.iter():
+            if c.external_customer_id:
+                existing[c.external_customer_id] = c.id
+
+        for crm in crm_customers:
+            ext_id = crm["id"]
+            if ext_id in existing:
+                await kp.customers.update(existing[ext_id], name=crm["name"])
+            else:
+                await kp.customers.create(name=crm["name"], external_customer_id=ext_id)
+```
+
+### Send a Scheduled Broadcast
+
+```python
+async def schedule_promo(api_key: str, phone_number_id: str, recipients: list[str]):
+    async with KapsoPlatformClient(api_key=api_key) as kp:
+        broadcast = await kp.broadcasts.create(
+            phone_number_id=phone_number_id,
+            name="Spring promo",
+            template_name="promo_v3",
+            template_language="en_US",
+            template_variables={"discount": "20%"},
+        )
+        await kp.broadcasts.add_recipients(
+            broadcast.id,
+            recipients=[{"phone": p} for p in recipients],
+        )
+        await kp.broadcasts.schedule(
+            broadcast.id,
+            scheduled_at="2026-05-01T15:00:00Z",
+        )
+        print(f"scheduled broadcast {broadcast.id}")
+```
+
+### Query the Kapso-managed Database
+
+```python
+async def find_qualified_leads(api_key: str):
+    async with KapsoPlatformClient(api_key=api_key) as kp:
+        rows = await kp.database.query(
+            table="leads",
+            where={"status": "qualified"},
+            order_by="created_at desc",
+            limit=100,
+        )
+        for row in rows:
+            print(row["name"], row["created_at"])
+```
+
+### Provision a Webhook and Verify It's Reachable
+
+```python
+async def provision_webhook(api_key: str, url: str):
+    async with KapsoPlatformClient(api_key=api_key) as kp:
+        hook = await kp.project_webhooks.create(
+            url=url,
+            events=["message.received", "message.delivered", "broadcast.completed"],
+            secret_key="whsec_replace_me",
+        )
+        result = await kp.project_webhooks.test(hook.id, event_type="message.received")
+        if not result.success:
+            await kp.project_webhooks.delete(hook.id)
+            raise RuntimeError(f"webhook {url} did not respond — rolled back")
+        print(f"webhook {hook.id} active")
+```
+
+### Investigate Failed Webhook Deliveries
+
+```python
+async def replay_failed(api_key: str, webhook_id: str):
+    """List delivery attempts that didn't get a 2xx response."""
+    async with KapsoPlatformClient(api_key=api_key) as kp:
+        async for delivery in kp.webhook_deliveries.iter(webhook_id=webhook_id):
+            if not (200 <= delivery.response_code < 300):
+                print(
+                    delivery.attempted_at,
+                    delivery.response_code,
+                    delivery.event_type,
+                )
+```
+
+### Mix Both Clients in One Application
+
+A typical pattern: use `KapsoPlatformClient` for project setup, `WhatsAppClient` for live messaging.
+
+```python
+import os
+from kapso_whatsapp import KapsoPlatformClient, WhatsAppClient
+
+API_KEY = os.environ["KAPSO_API_KEY"]
+
+async def welcome_customer(name: str, phone_number_id: str, to: str):
+    async with KapsoPlatformClient(api_key=API_KEY) as kp, \
+               WhatsAppClient(kapso_api_key=API_KEY) as wa:
+        # Project-management call
+        customer = await kp.customers.create(name=name)
+
+        # Messaging call (uses the Kapso Meta-proxy with the same key)
+        await wa.messages.send_text(
+            phone_number_id=phone_number_id,
+            to=to,
+            body=f"Welcome, {customer.name}!",
+        )
+```
+
+### Custom Pagination
+
+```python
+# Walk every conversation, but stop once you've seen 500 of them
+async with KapsoPlatformClient(api_key=API_KEY) as kp:
+    seen = 0
+    async for c in kp.conversations.iter(per_page=50):
+        process(c)
+        seen += 1
+        if seen >= 500:
+            break
+
+# Or use the generic paginate() for endpoints not yet wrapped as resources
+async for row in kp.paginate("custom/path", params={"foo": "bar"}, per_page=100):
+    ...
+```
+
+### Manage WhatsApp Flow Lifecycle
+
+```python
+async def deploy_flow(api_key: str, phone_number_id: str, flow_json: dict):
+    async with KapsoPlatformClient(api_key=api_key) as kp:
+        flow = await kp.whatsapp_flows.create(
+            name="Onboarding",
+            phone_number_id=phone_number_id,
+            flow_json=flow_json,
+        )
+
+        # If your flow has a server-side data endpoint, deploy it
+        await kp.whatsapp_flows.upsert_data_endpoint(
+            flow.id,
+            code=open("flow_handler.js").read(),
+        )
+        await kp.whatsapp_flows.deploy_data_endpoint(flow.id)
+        await kp.whatsapp_flows.register_data_endpoint_with_meta(flow.id)
+
+        # Publish the flow
+        await kp.whatsapp_flows.publish(flow.id)
+
+        # Tail logs for the data endpoint
+        logs = await kp.whatsapp_flows.get_function_logs(flow.id, limit=100)
+        for entry in logs:
+            print(entry)
+```

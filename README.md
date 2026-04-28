@@ -346,10 +346,12 @@ client = WhatsAppClient(
 
 ## 📖 Documentation
 
-- **[API Reference](docs/api-reference.md)** - Complete API documentation
-- **[Examples](docs/examples.md)** - Detailed usage examples
-- **[Webhooks Guide](docs/webhooks.md)** - Webhook integration
-- **[Architecture](docs/architecture.md)** - System design and diagrams
+- **[API Reference](docs/api-reference.md)** — `WhatsAppClient` complete API documentation
+- **[Platform API Reference](docs/platform-api.md)** — `KapsoPlatformClient`: 18 resources, ~87 endpoints
+- **[Examples](docs/examples.md)** — usage examples for both clients
+- **[Webhooks Guide](docs/webhooks.md)** — webhook signature verification + payload normalization
+- **[Architecture](docs/architecture.md)** — system design, two-client topology, diagrams
+- **[Changelog](CHANGELOG.md)** — version history
 
 ## 🧪 Development
 

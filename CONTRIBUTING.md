@@ -282,6 +282,33 @@ def client(access_token: str) -> WhatsAppClient:
     return WhatsAppClient(access_token=access_token)
 ```
 
+For Platform API tests, use the `platform_client` and `mock_platform_api` fixtures (also in `tests/conftest.py`). They scope `respx` to `api.kapso.ai/platform/v1`:
+
+```python
+async def test_list_customers(platform_client, mock_platform_api):
+    mock_platform_api.get("/customers").mock(
+        return_value=Response(200, json={
+            "data": [{"id": "uuid-1", "name": "Acme"}],
+            "meta": {"page": 1, "per_page": 20, "total_pages": 1, "total_count": 1},
+        })
+    )
+    customers = await platform_client.customers.list()
+    assert customers[0].name == "Acme"
+```
+
+### Adding a New Platform API Resource
+
+The reference template is `src/kapso_whatsapp/platform/resources/customers.py` + `tests/platform/test_customers.py`. To add a new resource:
+
+1. **Create the resource file** under `src/kapso_whatsapp/platform/resources/<name>.py`. Define Pydantic models at the top of the file. Resource class extends `PlatformBaseResource`.
+2. **Implement methods following the conventions:** `list()` returns one page, `iter()` async-generates across all pages via `self._client.paginate(path, ...)`, `get()` / `create()` / `update()` / `delete()` for CRUD. Use the local `_filters(**kwargs)` helper to drop `None` query params.
+3. **Match the API's body shape literally.** Some endpoints wrap the body Rails-style (`{"customer": {...}}`), some don't. Read the docs and copy what's there.
+4. **Wire the resource into the client** — add a `TYPE_CHECKING` import, an instance variable, and a lazy-loaded `@property` to `src/kapso_whatsapp/platform/client.py`.
+5. **Write tests** in `tests/platform/test_<name>.py` mirroring `test_customers.py`. Use the `platform_client` and `mock_platform_api` fixtures.
+6. **Verify against live API** by adding the resource to `examples/platform_smoke.py` and running it with a real `KAPSO_API_TOKEN`. Pydantic models commonly need `extra="allow"` and lots of `field | None = None` to tolerate real responses.
+
+Run `python -m pytest tests/platform/`, `python -m mypy src/`, and `python -m ruff check src/ tests/` before opening the PR.
+
 ---
 
 ## Pull Requests
